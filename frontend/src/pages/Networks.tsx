@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { AlertTriangle, CheckCircle2, ChevronDown, CircleSlash, Clock, Link2, RefreshCw, Unplug } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, CircleSlash, Clock, Link2, RefreshCw, Unplug } from 'lucide-react'
 import { api, type CapKey, type CapStatus, type NetworkInfo } from '../lib/api'
 import { Logo } from '../lib/platforms'
 import { ErrorBox, Spinner, useFetch, useToast } from '../components/ui'
@@ -188,6 +188,11 @@ export default function Networks() {
                     >
                       <Link2 size={15} /> {acc ? 'Reconnecter' : 'Connecter mon compte'}
                     </button>
+                    {connected && (
+                      <Link to={`/${n.platform}`} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                        <ArrowRight size={15} /> Ouvrir la page {n.label}
+                      </Link>
+                    )}
                     {acc && (
                       <button onClick={() => disconnect(acc.id, acc.account_name)} className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-3.5 py-2 text-sm font-medium text-red-700 hover:bg-red-50">
                         <Unplug size={15} /> Déconnecter

@@ -2,32 +2,26 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import {
-  Activity, ArrowRight, ArrowUpRight, ArrowDownRight, CalendarClock, ChevronDown, Filter, Heart, MessageSquare, Plus, RefreshCw, Search, Trophy,
-} from 'lucide-react'
+import { Activity, ArrowRight, BarChart3, ChevronDown, Filter, Heart, MessageSquare, RefreshCw, Search, Trophy } from 'lucide-react'
 import { api, type Platform } from '../lib/api'
 import { Logo, PLATFORM_LIST, PLATFORM_META } from '../lib/platforms'
+import { Delta, EngagementChart, pctChange, type Timeline } from '../components/charts'
 import { Empty, ErrorBox, PlatformTag, Spinner, fmtNum, useFetch, useToast } from '../components/ui'
 
 interface Net {
   platform: Platform; label: string; configured: boolean; status: 'connected' | 'expired' | 'disconnected'
   account: string | null; lastError: string | null; remotePosts: number | null; likes: number | null
   pendingComments: number | null; commentsNote: string | null; messagesNote: string
-  publishedByUs: number; scheduledByUs: number
 }
 interface Dash {
   networks: Net[]
-  totals: { published: number; scheduled: number; drafts: number; failed: number; pendingComments: number }
+  totals: { pendingComments: number }
   activity: { id: string; action: string; platform: Platform | null; detail: Record<string, unknown>; created_at: string }[]
   top: { platform: Platform; caption: string | null; permalink: string | null; published_at: string | null; interactions: number }[]
 }
 interface Period { posts: number; likes: number | null; comments: number | null; shares: number | null; saved: number | null }
 interface Analytics {
   platforms: { platform: Platform; connected: boolean; followers: { latest: number | null }; current: Period; previous: Period }[]
-}
-interface Timeline {
-  bucket: 'week' | 'month'; total: number
-  buckets: { start: string; end: string; label: string; interactions: number; posts: number; byPlatform: Record<string, number> }[]
 }
 
 const ACTION: Record<string, string> = {
@@ -46,17 +40,6 @@ function tone(action: string): { label: string; dot: string; text: string } {
 }
 
 const inter = (p: Period) => (p.likes ?? 0) + (p.comments ?? 0) + (p.shares ?? 0) + (p.saved ?? 0)
-
-function Pill({ pct, onDark }: { pct: number | null; onDark?: boolean }) {
-  if (pct === null) return null
-  const up = pct >= 0
-  const Icon = up ? ArrowUpRight : ArrowDownRight
-  return (
-    <span className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium ${onDark ? 'bg-white text-emerald-700' : up ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
-      {up ? '+' : '−'}{Math.abs(pct).toFixed(1)}% <Icon size={12} />
-    </span>
-  )
-}
 
 function SummaryCard({ icon, title, subtitle, value, pill, footer, to, hero }: {
   icon: React.ReactNode; title: string; subtitle: string; value: string; pill?: React.ReactNode; footer: string; to: string; hero?: boolean
@@ -80,74 +63,6 @@ function SummaryCard({ icon, title, subtitle, value, pill, footer, to, hero }: {
       <Link to={to} className="flex items-center justify-between border-t border-slate-200 bg-white px-5 py-3 text-sm text-slate-700 hover:bg-slate-50">
         {footer} <ArrowRight size={16} />
       </Link>
-    </div>
-  )
-}
-
-/** Axe vertical « propre » (0, 10, 20…) */
-function niceMax(v: number) {
-  if (v <= 5) return 5
-  const p = 10 ** Math.floor(Math.log10(v))
-  return Math.ceil(v / p) * p
-}
-
-function Chart({ data }: { data: Timeline }) {
-  const [hover, setHover] = useState<number | null>(null)
-  const max = niceMax(Math.max(0, ...data.buckets.map((b) => b.interactions)))
-  const ticks = [1, 0.75, 0.5, 0.25, 0].map((t) => Math.round(max * t))
-  const empty = data.buckets.every((b) => b.posts === 0)
-  return (
-    <div className="relative mt-4 flex h-64 gap-3">
-      <div className="flex flex-col justify-between pb-6 text-xs text-slate-500" aria-hidden>
-        {ticks.map((t) => <span key={t}>{fmtNum(t)}</span>)}
-      </div>
-      <div className="relative flex flex-1 items-end gap-2 sm:gap-4">
-        {empty && (
-          <p className="absolute inset-x-0 top-1/3 z-10 text-center text-sm text-slate-400">
-            Aucune publication synchronisée sur cette période.<br />Connectez un compte puis cliquez sur « Actualiser ».
-          </p>
-        )}
-        {data.buckets.map((b, i) => {
-          const h = max ? (b.interactions / max) * 100 : 0
-          const active = hover === i
-          const detail = Object.entries(b.byPlatform).filter(([, v]) => v > 0)
-          return (
-            <div key={b.start} className="flex h-full min-w-0 flex-1 flex-col items-center">
-              <div className="relative w-full flex-1">
-                <button
-                  type="button"
-                  onMouseEnter={() => setHover(i)}
-                  onMouseLeave={() => setHover(null)}
-                  onFocus={() => setHover(i)}
-                  onBlur={() => setHover(null)}
-                  aria-label={`${b.label}: ${b.interactions} interactions, ${b.posts} publication(s)`}
-                  className="absolute inset-0 flex items-end rounded-t-lg focus-visible:outline-2"
-                >
-                  <span
-                    style={{ height: `${Math.max(h, b.posts ? 3 : 1)}%` }}
-                    className={`relative block w-full rounded-t-lg transition-colors ${active ? 'bg-gradient-to-b from-[#0b7a43] to-[#cfe6d8]' : 'bg-gradient-to-b from-[#cfe3d8] to-[#eef5f1]'}`}
-                  >
-                    {active && <span aria-hidden className="absolute bottom-0 left-1/2 h-full w-px bg-white/70" />}
-                  </span>
-                </button>
-                {active && (
-                  <div
-                    role="tooltip"
-                    style={{ bottom: `min(calc(${Math.max(h, 3)}% + 0.5rem), calc(100% - 9.5rem))` }}
-                    className={`pointer-events-none absolute z-20 w-48 rounded-xl bg-neutral-900 p-3 text-xs text-white shadow-xl ${i < 2 ? 'left-0' : i > data.buckets.length - 3 ? 'right-0' : 'left-1/2 -translate-x-1/2'}`}
-                  >
-                    <p className="mb-1.5 text-white/60">{format(new Date(b.start), 'd MMM', { locale: fr })} – {format(new Date(new Date(b.end).getTime() - 1), 'd MMM yyyy', { locale: fr })}</p>
-                    <p className="flex justify-between"><span className="text-white/70">Interactions</span><span className="font-medium">{fmtNum(b.interactions)}</span></p>
-                    <p className="flex justify-between"><span className="text-white/70">Publications</span><span className="font-medium">{b.posts}</span></p>
-                    {detail.map(([p, v]) => <p key={p} className="flex justify-between"><span className="text-white/70">{PLATFORM_META[p as Platform].label}</span><span className="font-medium">{fmtNum(v)}</span></p>)}
-                  </div>
-                )}
-              </div>
-              <span className="mt-2 h-4 text-xs text-slate-500">{b.label}</span>
-            </div>
-          )
-        })}
-      </div>
     </div>
   )
 }
@@ -176,10 +91,11 @@ export default function Dashboard() {
     setRefreshing(false)
   }
 
-  const cur = useMemo(() => (ana.data?.platforms ?? []).reduce((a, p) => a + inter(p.current), 0), [ana.data])
-  const prev = useMemo(() => (ana.data?.platforms ?? []).reduce((a, p) => a + inter(p.previous), 0), [ana.data])
-  const delta = prev > 0 ? ((cur - prev) / prev) * 100 : null // pas de pourcentage sans base de comparaison
-  const anyStats = (ana.data?.platforms ?? []).some((p) => p.connected)
+  const stats = useMemo(() => (ana.data?.platforms ?? []).filter((p) => p.connected), [ana.data])
+  const cur = stats.reduce((a, p) => a + inter(p.current), 0)
+  const prev = stats.reduce((a, p) => a + inter(p.previous), 0)
+  const posts = stats.reduce((a, p) => a + p.current.posts, 0)
+  const delta = prev > 0 ? pctChange(cur, prev) : null // pas de pourcentage sans base de comparaison
 
   const rows = useMemo(() => {
     const s = search.trim().toLowerCase()
@@ -192,12 +108,13 @@ export default function Dashboard() {
   if (dash.loading && !dash.data) return <Spinner />
   if (dash.error || !dash.data) return <ErrorBox error={dash.error ?? 'Données indisponibles'} onRetry={dash.reload} />
   const d = dash.data
-  const connected = d.networks.filter((n) => n.status === 'connected').length
+  const connected = d.networks.filter((n) => n.status === 'connected')
+  const firstConnected = connected[0]?.platform
+  const firstPending = d.networks.find((n) => (n.pendingComments ?? 0) > 0)?.platform
   const followers = (p: Platform) => ana.data?.platforms.find((x) => x.platform === p)?.followers.latest ?? null
 
   return (
     <>
-      {/* En-tête */}
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Vue d’ensemble</h1>
@@ -217,7 +134,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {connected === 0 && (
+      {connected.length === 0 && (
         <div className="mb-5 rounded-xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-700">
           Aucun réseau connecté pour le moment. <Link to="/networks" className="font-semibold underline">Connectez vos comptes</Link> pour alimenter ce tableau de bord.
         </div>
@@ -230,35 +147,46 @@ export default function Dashboard() {
           icon={<Heart size={20} />}
           title="Interactions"
           subtitle={`J’aime, commentaires, partages · ${days} jours`}
-          value={anyStats ? fmtNum(cur) : '—'}
-          pill={anyStats ? <Pill pct={delta} onDark /> : null}
-          footer="Voir les statistiques"
-          to="/analytics"
+          value={stats.length ? fmtNum(cur) : '—'}
+          pill={stats.length ? <Delta pct={delta} onDark /> : null}
+          footer="Voir le détail par réseau"
+          to={firstConnected ? `/${firstConnected}` : '/networks'}
         />
-        <SummaryCard icon={<CalendarClock size={20} />} title="Publications programmées" subtitle="Envoyées par le serveur à l’heure dite" value={fmtNum(d.totals.scheduled)} footer="Ouvrir le calendrier" to="/calendar" />
-        <SummaryCard icon={<MessageSquare size={20} />} title="Commentaires à traiter" subtitle={d.totals.failed ? `${d.totals.failed} échec(s) de publication à relancer` : 'Aucun échec de publication'} value={fmtNum(d.totals.pendingComments)} footer="Ouvrir la boîte de réception" to="/inbox" />
+        <SummaryCard
+          icon={<BarChart3 size={20} />}
+          title="Publications suivies"
+          subtitle={`Des comptes connectés · ${days} jours`}
+          value={stats.length ? fmtNum(posts) : '—'}
+          footer="Voir les publications"
+          to={firstConnected ? `/${firstConnected}?tab=publications` : '/networks'}
+        />
+        <SummaryCard
+          icon={<MessageSquare size={20} />}
+          title="Commentaires à traiter"
+          subtitle="Tous réseaux confondus"
+          value={fmtNum(d.totals.pendingComments)}
+          footer="Ouvrir les commentaires"
+          to={firstPending ? `/${firstPending}?tab=commentaires` : firstConnected ? `/${firstConnected}?tab=commentaires` : '/networks'}
+        />
       </div>
 
       {/* Réseaux + graphique */}
       <div className="mt-4 grid gap-4 lg:grid-cols-5">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <h2 className="text-lg font-semibold">Mes réseaux</h2>
-              <p className="text-sm text-slate-500">{connected} connecté{connected > 1 ? 's' : ''} sur {d.networks.length}</p>
-            </div>
-            <Link to="/networks" className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-medium hover:bg-slate-50"><Plus size={15} /> Gérer</Link>
+          <div>
+            <h2 className="text-lg font-semibold">Mes réseaux</h2>
+            <p className="text-sm text-slate-500">{connected.length} connecté{connected.length > 1 ? 's' : ''} sur {d.networks.length}</p>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             {d.networks.map((n) => {
               const st = n.status === 'connected' ? { t: 'Connecté', c: 'text-emerald-600' } : n.status === 'expired' ? { t: 'Expiré', c: 'text-amber-600' } : { t: n.configured ? 'Non connecté' : 'Non configuré', c: 'text-red-500' }
               return (
-                <Link key={n.platform} to="/networks" className="rounded-xl bg-slate-50 p-3.5 transition hover:bg-slate-100" title={n.lastError ?? n.account ?? undefined}>
+                <Link key={n.platform} to={n.status === 'connected' ? `/${n.platform}` : '/networks'} className="rounded-xl bg-slate-50 p-3.5 transition hover:bg-slate-100" title={n.lastError ?? n.account ?? undefined}>
                   <div className="flex items-center gap-2 text-sm font-medium"><Logo platform={n.platform} size={20} /> {n.label}</div>
                   <p className="mt-3 text-xl font-semibold tracking-tight">{n.status === 'connected' ? fmtNum(followers(n.platform)) : '—'}</p>
                   <p className="text-[11px] text-slate-500">abonnés</p>
                   <p className="mt-1.5 truncate text-[11px] text-slate-500">
-                    {n.scheduledByUs} programmée(s) · {n.pendingComments === null ? 'commentaires N/D' : `${n.pendingComments} commentaire(s)`}
+                    {n.status === 'connected' ? `${fmtNum(n.remotePosts)} publication(s) · ${n.pendingComments === null ? 'commentaires N/D' : `${n.pendingComments} commentaire(s)`}` : n.commentsNote ? 'Voir les limites' : 'À connecter'}
                   </p>
                   <p className={`mt-1 text-[11px] font-medium ${st.c}`}>{st.t}</p>
                 </Link>
@@ -280,7 +208,7 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
-          {tl.error ? <div className="mt-4"><ErrorBox error={tl.error} onRetry={tl.reload} /></div> : tl.data ? <Chart data={tl.data} /> : <Spinner />}
+          {tl.error ? <div className="mt-4"><ErrorBox error={tl.error} onRetry={tl.reload} /></div> : tl.data ? <EngagementChart data={tl.data} /> : <Spinner />}
           <p className="mt-3 text-[11px] text-slate-400">Basé sur les publications synchronisées (les plus récentes de chaque réseau). Interactions = J’aime + commentaires + partages + enregistrements.</p>
         </section>
       </div>
@@ -307,7 +235,7 @@ export default function Dashboard() {
             </div>
           </div>
           {rows.length === 0 ? (
-            <Empty icon={<Activity size={32} />} title={d.activity.length ? 'Aucun résultat' : 'Aucune activité'} text={d.activity.length ? 'Modifiez la recherche ou le filtre.' : 'Les publications, réponses et connexions apparaîtront ici.'} />
+            <Empty icon={<Activity size={32} />} title={d.activity.length ? 'Aucun résultat' : 'Aucune activité'} text={d.activity.length ? 'Modifiez la recherche ou le filtre.' : 'Les connexions, réponses et traitements apparaîtront ici.'} />
           ) : (
             <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full min-w-[34rem] text-left text-sm">

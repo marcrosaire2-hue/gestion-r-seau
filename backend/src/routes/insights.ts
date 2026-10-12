@@ -169,7 +169,10 @@ insights.get(
       const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
       for (let i = 7; i >= 0; i--) starts.push(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() - i * 7));
     }
-    const rows = (await C.metrics.find({ user_id: req.userId, published_at: { $gte: starts[0] } }, NO_ID).toArray()) as any[];
+    const q: Record<string, unknown> = { user_id: req.userId, published_at: { $gte: starts[0] } };
+    const only = String(req.query.platform ?? '');
+    if ((PLATFORMS as string[]).includes(only)) q.platform = only; // page d'un réseau: ne compter que ce réseau
+    const rows = (await C.metrics.find(q, NO_ID).toArray()) as any[];
     const buckets = starts.map((start, i) => {
       const end = starts[i + 1] ?? new Date(now.getTime() + 86_400_000);
       const inRange = rows.filter((r) => r.published_at && new Date(r.published_at) >= start && new Date(r.published_at) < end);

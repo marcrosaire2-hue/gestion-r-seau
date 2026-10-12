@@ -1,60 +1,54 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import {
-  ArrowLeft, ArrowRight, BarChart3, Bell, CalendarDays, ChevronDown, Inbox, LayoutDashboard, ListChecks, LogOut,
-  Search, Share2, Sparkles,
-} from 'lucide-react'
-import { api } from '../lib/api'
+import { ArrowLeft, ArrowRight, Bell, ChevronDown, LayoutDashboard, LogOut, Search, Share2, Sparkles, type LucideIcon } from 'lucide-react'
+import { api, type Platform } from '../lib/api'
+import { Logo, PLATFORM_META } from '../lib/platforms'
 import { getUser, setToken } from '../lib/session'
 
-interface Item { to: string; label: string; icon: typeof Inbox; end?: boolean; badge?: 'scheduled' | 'pendingComments' | 'failed' }
+interface Item { to: string; label: string; end?: boolean; icon?: LucideIcon; platform?: Platform }
+
+const NETWORKS: Platform[] = ['facebook', 'instagram', 'linkedin', 'tiktok']
 const GROUPS: { title: string; items: Item[] }[] = [
+  { title: 'MENU PRINCIPAL', items: [{ to: '/', label: 'Tableau de bord', icon: LayoutDashboard, end: true }] },
+  { title: 'RÉSEAUX', items: NETWORKS.map((p) => ({ to: `/${p}`, label: PLATFORM_META[p].label, platform: p })) },
   {
-    title: 'MENU PRINCIPAL',
+    title: 'GESTION',
     items: [
-      { to: '/', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
       { to: '/networks', label: 'Mes réseaux', icon: Share2 },
-      { to: '/posts', label: 'Publications', icon: ListChecks, badge: 'failed' },
-    ],
-  },
-  {
-    title: 'FONCTIONNALITÉS',
-    items: [
-      { to: '/calendar', label: 'Calendrier', icon: CalendarDays, badge: 'scheduled' },
-      { to: '/inbox', label: 'Commentaires', icon: Inbox, badge: 'pendingComments' },
-      { to: '/analytics', label: 'Statistiques', icon: BarChart3 },
       { to: '/assistant', label: 'Assistant IA', icon: Sparkles },
     ],
   },
 ]
 const ALL = GROUPS.flatMap((g) => g.items)
-const TITLES: Record<string, string> = Object.fromEntries(ALL.map((i) => [i.to, i.label]))
 
-interface Totals { scheduled: number; pendingComments: number; failed: number }
+interface NetCounts { platform: Platform; pendingComments: number | null }
 
 export default function Layout() {
   const nav = useNavigate()
   const { pathname } = useLocation()
-  const [totals, setTotals] = useState<Totals | null>(null)
+  const [nets, setNets] = useState<NetCounts[]>([])
   const [q, setQ] = useState('')
   const [menu, setMenu] = useState(false)
   const search = useRef<HTMLInputElement>(null)
   const user = getUser() || 'Utilisateur'
 
-  // Compteurs réels des badges (rafraîchis chaque minute et à chaque changement de page)
+  // Compteurs réels (commentaires à traiter par réseau), rafraîchis chaque minute et à chaque changement de page
   useEffect(() => {
     let alive = true
-    const load = () =>
-      api<{ totals: Totals }>('/insights/dashboard').then((d) => alive && setTotals(d.totals)).catch(() => {})
+    const load = () => api<{ networks: NetCounts[] }>('/insights/dashboard').then((d) => alive && setNets(d.networks)).catch(() => {})
     load()
     const id = setInterval(load, 60_000)
     return () => { alive = false; clearInterval(id) }
   }, [pathname])
 
   const matches = (i: Item) => i.label.toLowerCase().includes(q.trim().toLowerCase())
-  const badge = (i: Item) => (i.badge && totals ? totals[i.badge] : 0)
-  const title = TITLES[pathname] ?? ALL.find((i) => !i.end && pathname.startsWith(i.to))?.label ?? ''
-  const alerts = (totals?.pendingComments ?? 0) + (totals?.failed ?? 0)
+  const badge = (i: Item) => (i.platform ? nets.find((n) => n.platform === i.platform)?.pendingComments ?? 0 : 0)
+  const title = ALL.find((i) => i.to === pathname)?.label ?? ''
+  const alerts = nets.reduce((a, n) => a + (n.pendingComments ?? 0), 0)
+  const firstPending = nets.find((n) => (n.pendingComments ?? 0) > 0)?.platform
+  const bellTo = firstPending ? `/${firstPending}?tab=commentaires` : '/'
+
+  const NavIcon = ({ i, size }: { i: Item; size: number }) => (i.platform ? <Logo platform={i.platform} size={size} /> : i.icon ? <i.icon size={size} /> : null)
 
   return (
     <div className="min-h-screen bg-white md:flex">
@@ -103,11 +97,9 @@ export default function Layout() {
                           }`
                         }
                       >
-                        <i.icon size={18} />
+                        {i.platform ? <span className="grid h-[18px] w-[18px] place-items-center rounded bg-white/90"><Logo platform={i.platform} size={15} /></span> : <NavIcon i={i} size={18} />}
                         <span className="flex-1">{i.label}</span>
-                        {n > 0 && (
-                          <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${i.badge === 'failed' ? 'bg-red-100 text-red-700' : 'bg-slate-200/80 text-slate-700'}`}>{n}</span>
-                        )}
+                        {n > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800" title="Commentaires à traiter">{n}</span>}
                       </NavLink>
                     )
                   })}
@@ -127,7 +119,6 @@ export default function Layout() {
             </button>
           </div>
         </nav>
-
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -145,9 +136,9 @@ export default function Layout() {
 
           <div className="ml-auto flex items-center gap-2">
             <Link
-              to="/inbox"
-              aria-label={alerts ? `${alerts} élément(s) à traiter` : 'Aucune notification'}
-              title={alerts ? `${totals?.pendingComments ?? 0} commentaire(s) à traiter · ${totals?.failed ?? 0} échec(s) de publication` : 'Rien à traiter'}
+              to={bellTo}
+              aria-label={alerts ? `${alerts} commentaire(s) à traiter` : 'Aucune notification'}
+              title={alerts ? `${alerts} commentaire(s) à traiter` : 'Rien à traiter'}
               className="relative grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
             >
               <Bell size={17} />
@@ -169,7 +160,7 @@ export default function Layout() {
           </div>
         </header>
 
-        {/* Zone de contenu grise, angle supérieur gauche arrondi (comme le modèle) */}
+        {/* Zone de contenu grise, angle supérieur gauche arrondi */}
         <main className="min-w-0 flex-1 bg-[#f5f6f7] px-4 pt-6 pb-24 md:rounded-tl-[1.75rem] md:px-8 md:pb-10">
           <div className="mx-auto max-w-6xl"><Outlet /></div>
         </main>
@@ -186,7 +177,7 @@ export default function Layout() {
               `relative flex min-w-[4.5rem] flex-1 flex-col items-center gap-0.5 px-2 py-2 text-[11px] font-medium ${isActive ? 'text-brand-700' : 'text-slate-500'}`
             }
           >
-            <i.icon size={20} />
+            <NavIcon i={i} size={20} />
             {i.label === 'Tableau de bord' ? 'Accueil' : i.label}
             {badge(i) > 0 && <span className="absolute top-1 right-3 h-2 w-2 rounded-full bg-red-500" />}
           </NavLink>

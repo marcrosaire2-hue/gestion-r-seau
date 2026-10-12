@@ -37,10 +37,25 @@ if (raw.RENDER_EXTERNAL_URL) {
   raw.PUBLIC_API_URL ??= raw.RENDER_EXTERNAL_URL;
   raw.FRONTEND_URL ??= raw.PUBLIC_API_URL;
 }
+// Tolérance aux erreurs de copier-coller (Render, .env): espaces, retours à la ligne et guillemets autour de la valeur.
+const clean = (v: string) => v.trim().replace(/^(["'])([\s\S]*)\1$/, '$2').trim();
+for (const k of Object.keys(schema.shape)) if (raw[k]) raw[k] = clean(raw[k]!);
+// Collé avec son nom (« TOKEN_ENCRYPTION_KEY=abc… »): on retire le préfixe.
+if (raw.TOKEN_ENCRYPTION_KEY) raw.TOKEN_ENCRYPTION_KEY = raw.TOKEN_ENCRYPTION_KEY.replace(/^TOKEN_ENCRYPTION_KEY\s*=\s*/, '').trim();
+
 const parsed = schema.safeParse(raw);
 if (!parsed.success) {
   console.error('Configuration invalide (.env) :');
-  for (const i of parsed.error.issues) console.error(` - ${i.path.join('.')}: ${i.message}`);
+  for (const i of parsed.error.issues) {
+    const name = i.path.join('.');
+    // Diagnostic sans jamais afficher la valeur d'un secret: seulement sa longueur et la nature de ses caractères.
+    const v = raw[name];
+    const hint =
+      v === undefined
+        ? ' [variable absente ou vide]'
+        : ` [valeur reçue: ${v.length} caractères, ${/^[0-9a-fA-F]*$/.test(v) ? 'tous hexadécimaux' : 'contient des caractères non hexadécimaux'}]`;
+    console.error(` - ${name}: ${i.message}${/KEY|SECRET|URI|TOKEN/.test(name) ? hint : ''}`);
+  }
   process.exit(1);
 }
 export const env = parsed.data;
