@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronDown, Copy, Loader2, MessageSquareText, Send, Sparkles, TrendingUp } from 'lucide-react'
 import { api, type Platform } from '../lib/api'
-import { Logo, PLATFORM_LIST, PLATFORM_META } from '../lib/platforms'
+import { PLATFORM_LIST, PLATFORM_META } from '../lib/platforms'
 import { Markdown } from '../components/Markdown'
 import { useToast } from '../components/ui'
 
@@ -60,7 +60,6 @@ export default function Assistant() {
     <>
       <div className="mb-5">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Assistant IA</h1>
-        <p className="max-w-3xl text-sm text-slate-500">Il analyse vos résultats réels (J’aime, réactions, commentaires, vues, portée, abonnés) et vous donne des conseils précis et stratégiques. Il ne s’appuie que sur les données synchronisées et n’invente aucun chiffre.</p>
       </div>
 
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -97,7 +96,7 @@ export default function Assistant() {
                 {analysis.empty ? (
                   <div className="text-sm text-slate-600">
                     <p>{analysis.analysis}</p>
-                    <Link to="/networks" className="mt-3 inline-flex rounded-xl bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700">Aller à « Mes réseaux »</Link>
+                    <Link to="/facebook" className="mt-3 inline-flex rounded-xl bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700">Connecter un réseau</Link>
                   </div>
                 ) : (
                   <>
@@ -106,14 +105,12 @@ export default function Assistant() {
                       <button onClick={() => copy(analysis.analysis)} className="inline-flex items-center gap-1 font-medium text-brand-700 hover:underline"><Copy size={12} /> Copier</button>
                     </div>
                     <Markdown text={analysis.analysis} />
-                    <p className="mt-4 border-t border-slate-200 pt-3 text-[11px] text-slate-400">Conseils indicatifs, fondés sur les données synchronisées (souvent les publications les plus récentes de chaque réseau). Vérifiez-les avant d’agir.</p>
                   </>
                 )}
               </>
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-2 py-8 text-center text-slate-400">
                 <Sparkles size={30} />
-                <p className="max-w-sm text-sm">Choisissez une période et un réseau, puis lancez l’analyse pour obtenir une synthèse, ce qui fonctionne, ce qui freine et des recommandations stratégiques.</p>
               </div>
             )}
           </div>
@@ -123,7 +120,6 @@ export default function Assistant() {
         <div className="space-y-4">
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="mb-1 flex items-center gap-2 text-base font-semibold"><Sparkles size={16} className="text-brand-600" /> Poser une question</h2>
-            <p className="mb-3 text-xs text-slate-500">Réponse basée sur la période et le réseau choisis.</p>
             <div className="mb-3 flex flex-wrap gap-1.5">
               {QUESTIONS.map((q) => (
                 <button key={q} disabled={busy !== null} onClick={() => { setQuestion(q); ask(q) }} className="rounded-full border border-slate-200 px-2.5 py-1 text-left text-xs text-slate-600 hover:border-brand-600 hover:text-brand-700 disabled:opacity-50">{q}</button>
@@ -145,14 +141,12 @@ export default function Assistant() {
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="mb-1 flex items-center gap-2 text-base font-semibold"><MessageSquareText size={16} className="text-brand-600" /> Analyser les retours</h2>
-            <p className="mb-3 text-xs text-slate-500">Thèmes, sentiment et questions sans réponse dans vos derniers commentaires.</p>
             <button onClick={summarize} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3.5 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60">
               {busy === 'feedback' && <Loader2 size={14} className="animate-spin" />} Analyser les commentaires
             </button>
             {feedback && <div className="mt-4 rounded-xl bg-slate-50 p-4"><Markdown text={feedback} /></div>}
           </section>
 
-          <p className="flex items-center gap-2 px-1 text-xs text-slate-400"><Logo platform="instagram" size={12} /><Logo platform="linkedin" size={12} /><Logo platform="tiktok" size={12} /><Logo platform="facebook" size={12} /> Aucune automatisation: l’assistant ne publie ni ne répond jamais seul.</p>
         </div>
       </div>
     </>

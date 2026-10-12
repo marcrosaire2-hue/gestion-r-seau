@@ -16,6 +16,7 @@ import { connections, oauthCallback } from './routes/connections';
 import { insights } from './routes/insights';
 import { media, mediaStatic } from './routes/media';
 import { posts } from './routes/posts';
+import { users } from './routes/users';
 import { startScheduler } from './services/scheduler';
 
 const app = express();
@@ -45,6 +46,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use('/api/auth', auth);
 app.use('/api/connections', connections);
 app.use('/api/posts', posts);
+app.use('/api/users', users);
 app.use('/api/comments', comments);
 app.use('/api/insights', insights);
 app.use('/api/ai', rateLimit({ windowMs: 60_000, limit: 20 }), ai);

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { api } from '../lib/api'
-import { setToken, setUser } from '../lib/session'
+import { setStoredRole, setToken, setUser } from '../lib/session'
 import { BlurredFronds, LoginPanelArt } from '../components/LoginArt'
 
 // Tailles fluides: elles suivent la largeur ET la hauteur de l'écran (vmin / vh) pour que le formulaire
@@ -31,8 +31,9 @@ export default function Login() {
     setBusy(true)
     setError(null)
     try {
-      const r = await api<{ token: string; username: string }>('/auth/login', { method: 'POST', body: { username, password } })
+      const r = await api<{ token: string; username: string; role: string }>('/auth/login', { method: 'POST', body: { username, password } })
       setUser(r.username)
+      setStoredRole(r.role)
       setToken(r.token)
     } catch (err) {
       setError((err as Error).message)
@@ -106,10 +107,6 @@ export default function Login() {
               Se connecter
             </button>
 
-            {/* Masqué quand la hauteur manque, pour ne jamais faire défiler */}
-            <p className="mt-[clamp(0.75rem,3vh,1.75rem)] text-center text-[clamp(0.62rem,1.4vmin,0.78rem)] leading-relaxed text-slate-500 [@media(max-height:520px)]:hidden">
-              Identifiant du tableau de bord. Les mots de passe de vos réseaux sociaux ne sont jamais demandés.
-            </p>
           </form>
         </div>
       </div>

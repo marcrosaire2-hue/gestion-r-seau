@@ -2,6 +2,7 @@ import { randomBytes, scrypt as _scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import { C } from './db';
 import { env } from './env';
 import { ApiError } from './http';
 
@@ -28,17 +29,36 @@ export async function verifyPassword(pw: string, stored: string) {
 
 export const signToken = (userId: string) => jwt.sign({ sub: userId }, env.JWT_SECRET, { expiresIn: '7d', algorithm: 'HS256' });
 
-/** Vérifie le JWT et pose req.userId. */
-export function requireAuth(req: Request, _res: Response, next: NextFunction) {
+/** Vérifie le JWT, puis que l'utilisateur existe encore (un compte supprimé perd son accès immédiatement). Pose req.userId. */
+export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
   try {
     const token = req.headers.authorization?.replace(/^Bearer\s+/i, '');
     if (!token) throw new ApiError('Authentification requise.', 401);
-    const payload = jwt.verify(token, env.JWT_SECRET, { algorithms: ['HS256'] });
-    if (typeof payload === 'string' || !payload.sub) throw new Error('payload');
-    req.userId = payload.sub;
+    let sub: string | undefined;
+    try {
+      const payload = jwt.verify(token, env.JWT_SECRET, { algorithms: ['HS256'] });
+      if (typeof payload !== 'string') sub = payload.sub;
+    } catch {
+      /* jeton invalide ou expiré: traité ci-dessous */
+    }
+    if (!sub) throw new ApiError('Session invalide ou expirée.', 401);
+    const user = await C.users.findOne({ id: sub }, { projection: { _id: 0, id: 1 } });
+    if (!user) throw new ApiError('Session invalide ou expirée.', 401);
+    req.userId = sub;
     next();
   } catch (e) {
-    next(e instanceof ApiError ? e : new ApiError('Session invalide ou expirée.', 401));
+    next(e);
+  }
+}
+
+/** Réserve une route aux administrateurs (le rôle est relu en base: jamais lu dans le jeton). À placer après requireAuth. */
+export async function requireAdmin(req: Request, _res: Response, next: NextFunction) {
+  try {
+    const user = await C.users.findOne({ id: req.userId }, { projection: { _id: 0, role: 1 } });
+    if ((user?.role ?? 'admin') !== 'admin') throw new ApiError('Réservé aux administrateurs.', 403);
+    next();
+  } catch (e) {
+    next(e);
   }
 }
 

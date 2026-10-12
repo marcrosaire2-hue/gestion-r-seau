@@ -118,7 +118,6 @@ export default function Dashboard() {
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Vue d’ensemble</h1>
-          <p className="text-sm text-slate-500">Résumé de vos réseaux sociaux. « — » : donnée non fournie par le réseau.</p>
         </div>
         <div className="flex gap-2">
           <label className="relative">
@@ -136,7 +135,7 @@ export default function Dashboard() {
 
       {connected.length === 0 && (
         <div className="mb-5 rounded-xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-700">
-          Aucun réseau connecté pour le moment. <Link to="/networks" className="font-semibold underline">Connectez vos comptes</Link> pour alimenter ce tableau de bord.
+          Aucun réseau connecté. <Link to="/facebook" className="font-semibold underline">Connecter un réseau</Link>
         </div>
       )}
 
@@ -146,27 +145,27 @@ export default function Dashboard() {
           hero
           icon={<Heart size={20} />}
           title="Interactions"
-          subtitle={`J’aime, commentaires, partages · ${days} jours`}
+          subtitle={`${days} derniers jours`}
           value={stats.length ? fmtNum(cur) : '—'}
           pill={stats.length ? <Delta pct={delta} onDark /> : null}
           footer="Voir le détail par réseau"
-          to={firstConnected ? `/${firstConnected}` : '/networks'}
+          to={firstConnected ? `/${firstConnected}` : '/facebook'}
         />
         <SummaryCard
           icon={<BarChart3 size={20} />}
           title="Publications suivies"
-          subtitle={`Des comptes connectés · ${days} jours`}
+          subtitle={`${days} derniers jours`}
           value={stats.length ? fmtNum(posts) : '—'}
           footer="Voir les publications"
-          to={firstConnected ? `/${firstConnected}?tab=publications` : '/networks'}
+          to={firstConnected ? `/${firstConnected}?tab=publications` : '/facebook'}
         />
         <SummaryCard
           icon={<MessageSquare size={20} />}
           title="Commentaires à traiter"
-          subtitle="Tous réseaux confondus"
+          subtitle="Tous réseaux"
           value={fmtNum(d.totals.pendingComments)}
           footer="Ouvrir les commentaires"
-          to={firstPending ? `/${firstPending}?tab=commentaires` : firstConnected ? `/${firstConnected}?tab=commentaires` : '/networks'}
+          to={firstPending ? `/${firstPending}?tab=commentaires` : firstConnected ? `/${firstConnected}?tab=commentaires` : '/facebook'}
         />
       </div>
 
@@ -174,14 +173,14 @@ export default function Dashboard() {
       <div className="mt-4 grid gap-4 lg:grid-cols-5">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
           <div>
-            <h2 className="text-lg font-semibold">Mes réseaux</h2>
+            <h2 className="text-lg font-semibold">Réseaux</h2>
             <p className="text-sm text-slate-500">{connected.length} connecté{connected.length > 1 ? 's' : ''} sur {d.networks.length}</p>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             {d.networks.map((n) => {
               const st = n.status === 'connected' ? { t: 'Connecté', c: 'text-emerald-600' } : n.status === 'expired' ? { t: 'Expiré', c: 'text-amber-600' } : { t: n.configured ? 'Non connecté' : 'Non configuré', c: 'text-red-500' }
               return (
-                <Link key={n.platform} to={n.status === 'connected' ? `/${n.platform}` : '/networks'} className="rounded-xl bg-slate-50 p-3.5 transition hover:bg-slate-100" title={n.lastError ?? n.account ?? undefined}>
+                <Link key={n.platform} to={`/${n.platform}`} className="rounded-xl bg-slate-50 p-3.5 transition hover:bg-slate-100" title={n.lastError ?? n.account ?? undefined}>
                   <div className="flex items-center gap-2 text-sm font-medium"><Logo platform={n.platform} size={20} /> {n.label}</div>
                   <p className="mt-3 text-xl font-semibold tracking-tight">{n.status === 'connected' ? fmtNum(followers(n.platform)) : '—'}</p>
                   <p className="text-[11px] text-slate-500">abonnés</p>
@@ -200,7 +199,6 @@ export default function Dashboard() {
             <div>
               <p className="text-sm text-slate-500">Engagement</p>
               <p className="text-3xl font-semibold tracking-tight">{tl.data ? fmtNum(tl.data.total) : '—'}</p>
-              <p className="text-xs text-slate-400">interactions sur les {bucket === 'week' ? '8 dernières semaines' : '6 derniers mois'}</p>
             </div>
             <div className="flex rounded-full border border-slate-200 p-0.5 text-sm" role="group" aria-label="Regroupement">
               {([['week', 'Hebdo'], ['month', 'Mensuel']] as const).map(([k, l]) => (
@@ -209,7 +207,6 @@ export default function Dashboard() {
             </div>
           </div>
           {tl.error ? <div className="mt-4"><ErrorBox error={tl.error} onRetry={tl.reload} /></div> : tl.data ? <EngagementChart data={tl.data} /> : <Spinner />}
-          <p className="mt-3 text-[11px] text-slate-400">Basé sur les publications synchronisées (les plus récentes de chaque réseau). Interactions = J’aime + commentaires + partages + enregistrements.</p>
         </section>
       </div>
 
@@ -235,7 +232,7 @@ export default function Dashboard() {
             </div>
           </div>
           {rows.length === 0 ? (
-            <Empty icon={<Activity size={32} />} title={d.activity.length ? 'Aucun résultat' : 'Aucune activité'} text={d.activity.length ? 'Modifiez la recherche ou le filtre.' : 'Les connexions, réponses et traitements apparaîtront ici.'} />
+            <Empty icon={<Activity size={32} />} title={d.activity.length ? 'Aucun résultat' : 'Aucune activité'} />
           ) : (
             <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
               <table className="w-full min-w-[34rem] text-left text-sm">
@@ -268,7 +265,7 @@ export default function Dashboard() {
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold"><Trophy size={18} className="text-amber-500" /> Meilleures publications</h2>
           {d.top.length === 0 ? (
-            <Empty icon={<Trophy size={32} />} title="Pas encore de statistiques" text="Connectez un compte puis cliquez sur « Actualiser »." />
+            <Empty icon={<Trophy size={32} />} title="Pas encore de statistiques" />
           ) : (
             <ol className="divide-y divide-slate-100">
               {d.top.map((t, i) => (

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Bell, ChevronDown, LayoutDashboard, LogOut, Search, Share2, Sparkles, type LucideIcon } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Bell, ChevronDown, LayoutDashboard, LogOut, Search, Share2, Sparkles, Users, type LucideIcon } from 'lucide-react'
 import { api, type Platform } from '../lib/api'
 import { Logo, PLATFORM_META } from '../lib/platforms'
-import { getUser, setToken } from '../lib/session'
+import { getRole, getUser, setStoredRole, setToken } from '../lib/session'
 
 interface Item { to: string; label: string; end?: boolean; icon?: LucideIcon; platform?: Platform }
 
@@ -12,14 +12,13 @@ const GROUPS: { title: string; items: Item[] }[] = [
   { title: 'MENU PRINCIPAL', items: [{ to: '/', label: 'Tableau de bord', icon: LayoutDashboard, end: true }] },
   { title: 'RÉSEAUX', items: NETWORKS.map((p) => ({ to: `/${p}`, label: PLATFORM_META[p].label, platform: p })) },
   {
-    title: 'GESTION',
+    title: 'OUTILS',
     items: [
-      { to: '/networks', label: 'Mes réseaux', icon: Share2 },
       { to: '/assistant', label: 'Assistant IA', icon: Sparkles },
     ],
   },
 ]
-const ALL = GROUPS.flatMap((g) => g.items)
+const USERS_ITEM: Item = { to: '/users', label: 'Utilisateurs', icon: Users }
 
 interface NetCounts { platform: Platform; pendingComments: number | null }
 
@@ -31,6 +30,14 @@ export default function Layout() {
   const [menu, setMenu] = useState(false)
   const search = useRef<HTMLInputElement>(null)
   const user = getUser() || 'Utilisateur'
+  const [role, setRole] = useState(getRole())
+
+  // Le rôle est relu auprès du serveur (le menu « Utilisateurs » n'est qu'un affichage: les routes sont protégées côté serveur)
+  useEffect(() => {
+    api<{ role: string }>('/auth/me').then((m) => { setRole(m.role); setStoredRole(m.role) }).catch(() => {})
+  }, [])
+  const groups = role === 'admin' ? GROUPS.map((g) => (g.title === 'OUTILS' ? { ...g, items: [...g.items, USERS_ITEM] } : g)) : GROUPS
+  const all = groups.flatMap((g) => g.items)
 
   // Compteurs réels (commentaires à traiter par réseau), rafraîchis chaque minute et à chaque changement de page
   useEffect(() => {
@@ -43,7 +50,7 @@ export default function Layout() {
 
   const matches = (i: Item) => i.label.toLowerCase().includes(q.trim().toLowerCase())
   const badge = (i: Item) => (i.platform ? nets.find((n) => n.platform === i.platform)?.pendingComments ?? 0 : 0)
-  const title = ALL.find((i) => i.to === pathname)?.label ?? ''
+  const title = all.find((i) => i.to === pathname)?.label ?? ''
   const alerts = nets.reduce((a, n) => a + (n.pendingComments ?? 0), 0)
   const firstPending = nets.find((n) => (n.pendingComments ?? 0) > 0)?.platform
   const bellTo = firstPending ? `/${firstPending}?tab=commentaires` : '/'
@@ -66,7 +73,7 @@ export default function Layout() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') { const m = ALL.find(matches); if (m) { nav(m.to); setQ('') } }
+              if (e.key === 'Enter') { const m = all.find(matches); if (m) { nav(m.to); setQ('') } }
               if (e.key === 'Escape') { setQ(''); search.current?.blur() }
             }}
             placeholder="Rechercher une page"
@@ -76,7 +83,7 @@ export default function Layout() {
         </div>
 
         <nav aria-label="Navigation principale" className="flex-1 space-y-5 overflow-y-auto">
-          {GROUPS.map((g) => {
+          {groups.map((g) => {
             const items = g.items.filter(matches)
             if (!items.length) return null
             return (
@@ -107,7 +114,7 @@ export default function Layout() {
               </div>
             )
           })}
-          {q && !ALL.some(matches) && <p className="px-3 text-sm text-slate-400">Aucune page trouvée.</p>}
+          {q && !all.some(matches) && <p className="px-3 text-sm text-slate-400">Aucune page trouvée.</p>}
 
           <div>
             <p className="mb-1.5 px-3 text-[11px] font-medium tracking-wider text-slate-400">GÉNÉRAL</p>
@@ -168,7 +175,7 @@ export default function Layout() {
 
       {/* Navigation téléphone */}
       <nav aria-label="Navigation mobile" className="fixed inset-x-0 bottom-0 z-40 flex overflow-x-auto border-t border-slate-200 bg-white md:hidden">
-        {ALL.map((i) => (
+        {all.map((i) => (
           <NavLink
             key={i.to}
             to={i.to}

@@ -23,7 +23,7 @@ export function Delta({ pct, onDark }: { pct: number | null; onDark?: boolean })
 /** Courbe d'abonnés (un relevé par synchronisation) */
 export function FollowersChart({ series }: { series: { at: string; value: number }[] }) {
   if (series.length < 2) {
-    return <p className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">Pas encore assez de relevés pour tracer une courbe. Un relevé est ajouté à chaque synchronisation.</p>
+    return <p className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">Pas encore assez de relevés.</p>
   }
   const vals = series.map((s) => s.value)
   const min = Math.min(...vals), max = Math.max(...vals), range = max - min || 1
@@ -73,7 +73,7 @@ export function EngagementChart({ data }: { data: Timeline }) {
       <div className="relative flex flex-1 items-end gap-2 sm:gap-4">
         {empty && (
           <p className="absolute inset-x-0 top-1/3 z-10 text-center text-sm text-slate-400">
-            Aucune publication synchronisée sur cette période.<br />Connectez un compte puis cliquez sur « Actualiser ».
+            Aucune publication sur cette période.
           </p>
         )}
         {data.buckets.map((b, i) => {

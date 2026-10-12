@@ -25,3 +25,11 @@ export const getUser = (): string => {
 export const setUser = (name: string) => {
   try { localStorage.setItem(USER, name) } catch { /* ignoré */ }
 }
+
+const ROLE = 'sd_role'
+export const getRole = (): string => {
+  try { return localStorage.getItem(ROLE) ?? '' } catch { return '' }
+}
+export const setStoredRole = (role: string) => {
+  try { localStorage.setItem(ROLE, role) } catch { /* ignoré */ }
+}

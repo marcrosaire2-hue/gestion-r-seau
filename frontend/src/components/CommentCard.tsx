@@ -96,7 +96,6 @@ export function CommentCard({ c, onChange }: { c: CommentRow; onChange: () => vo
                 </button>
                 <button onClick={() => setOpen(false)} className="ml-auto text-sm text-slate-500 hover:text-slate-800">Annuler</button>
               </div>
-              <p className="mt-2 text-[11px] text-slate-400">La réponse n’est envoyée sur le réseau qu’au clic sur « Envoyer la réponse ».</p>
             </div>
           )}
         </div>

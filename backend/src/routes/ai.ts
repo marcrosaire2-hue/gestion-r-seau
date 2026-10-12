@@ -15,7 +15,7 @@ const scope = z.object({
 });
 
 const NO_DATA =
-  'Aucune publication synchronisée sur cette période, donc rien à analyser. Connectez un compte dans « Mes réseaux », cliquez sur « Actualiser » dans le tableau de bord, puis relancez l’analyse.';
+  'Aucune publication synchronisée sur cette période, donc rien à analyser. Connectez un compte depuis la page de son réseau, cliquez sur « Actualiser », puis relancez l’analyse.';
 
 /** Analyse stratégique complète des résultats réels (J'aime, réactions, vues, portée, abonnés…). */
 ai.post(

@@ -51,6 +51,8 @@ export async function initDb() {
     C.snapshots.createIndex({ connection_id: 1, captured_at: 1 }),
     C.activity.createIndex({ user_id: 1, created_at: -1 }),
   ]);
+  // Comptes antérieurs aux rôles (créés par le propriétaire en ligne de commande): administrateurs.
+  await C.users.updateMany({ role: { $exists: false } }, { $set: { role: 'admin' } });
   console.log('MongoDB connecté.');
 }
 

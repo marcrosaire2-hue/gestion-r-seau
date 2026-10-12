@@ -1,9 +1,10 @@
-// Usage: npm run create-user -- <identifiant> <mot_de_passe>
+// Usage: npm run create-user -- <identifiant> <mot_de_passe> [admin|user]
 // Crée l'utilisateur, ou remplace son mot de passe s'il existe déjà.
 import { hashPassword } from '../auth';
 import { C, closeDb, initDb, newId } from '../db';
 
-const [rawName, password] = process.argv.slice(2);
+const [rawName, password, rawRole = 'admin'] = process.argv.slice(2);
+const role = rawRole === 'user' ? 'user' : 'admin';
 const username = rawName?.trim().toLowerCase();
 
 if (!username || !password) {
@@ -26,7 +27,7 @@ await initDb();
 const hash = await hashPassword(password);
 const r = await C.users.updateOne(
   { username },
-  { $set: { password_hash: hash }, $setOnInsert: { id: newId(), username, created_at: new Date() } },
+  { $set: { password_hash: hash }, $setOnInsert: { id: newId(), username, role, created_at: new Date() } },
   { upsert: true },
 );
 console.log(r.upsertedCount ? `Utilisateur « ${username} » créé.` : `Mot de passe de « ${username} » mis à jour.`);

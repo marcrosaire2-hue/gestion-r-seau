@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
-import { signToken, verifyPassword, wrap } from '../auth';
+import { requireAuth, signToken, verifyPassword, wrap } from '../auth';
 import { C } from '../db';
 import { ApiError } from '../http';
 
@@ -24,6 +24,16 @@ auth.post(
     const user = await C.users.findOne({ username });
     // Même message que l'identifiant existe ou non, pour ne pas révéler les comptes.
     if (!user || !(await verifyPassword(password, user.password_hash))) throw new ApiError('Identifiant ou mot de passe incorrect.', 401);
-    res.json({ token: signToken(user.id), username: user.username });
+    res.json({ token: signToken(user.id), username: user.username, role: user.role ?? 'admin' });
+  }),
+);
+
+/** Qui suis-je ? (le rôle sert à afficher le menu; chaque route sensible revérifie le rôle côté serveur) */
+auth.get(
+  '/me',
+  requireAuth,
+  wrap(async (req, res) => {
+    const u = await C.users.findOne({ id: req.userId }, { projection: { _id: 0, username: 1, role: 1 } });
+    res.json({ username: u?.username, role: u?.role ?? 'admin' });
   }),
 );

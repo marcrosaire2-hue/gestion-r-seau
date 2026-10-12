@@ -17,7 +17,8 @@ oauthCallback.get(
   '/:platform/callback',
   wrap(async (req, res) => {
     const platform = String(req.params.platform);
-    const back = (q: string) => res.redirect(`${env.FRONTEND_URL}/networks?${q}`);
+    // Retour sur la page du réseau concerné (chaque réseau gère sa propre connexion).
+    const back = (q: string) => res.redirect(`${env.FRONTEND_URL.replace(/\/$/, '')}/${isPlatform(platform) ? platform : ''}?${q}`);
     if (!isPlatform(platform)) return back('error=plateforme%20inconnue');
     const { code, state, error, error_description } = req.query as Record<string, string | undefined>;
     if (error) return back(`error=${encodeURIComponent(error_description ?? error)}&platform=${platform}`);

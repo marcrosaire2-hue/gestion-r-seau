@@ -1,9 +1,9 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { AlertTriangle, CheckCircle2, ChevronDown, CircleSlash, Clock, ExternalLink, Link2, Loader2, MessageSquare, RefreshCw, Search, Send, Sparkles, Trophy, TrendingUp } from 'lucide-react'
-import { api, type CapKey, type CapStatus, type CommentRow, type NetworkInfo, type Platform } from '../lib/api'
+import { AlertTriangle, ChevronDown, ExternalLink, Link2, Loader2, MessageSquare, RefreshCw, Search, Send, Sparkles, Trophy, TrendingUp, Unplug } from 'lucide-react'
+import { api, type CommentRow, type NetworkInfo, type Platform } from '../lib/api'
 import { Logo, PLATFORM_META } from '../lib/platforms'
 import { Delta, EngagementChart, FollowersChart, pctChange, type Timeline } from '../components/charts'
 import { CommentCard } from '../components/CommentCard'
@@ -25,13 +25,7 @@ interface Analysis { empty: boolean; analysis: string; basedOn: { publications: 
 
 const inter = (p: Period) => (p.likes ?? 0) + (p.comments ?? 0) + (p.shares ?? 0) + (p.saved ?? 0)
 
-type TabKey = 'apercu' | 'publications' | 'commentaires' | 'calendrier' | 'conseils'
-const CAP_LABEL: Record<CapKey, string> = { publish: 'Publier', schedule: 'Programmer', stats: 'Statistiques', comments: 'Lire les commentaires', reply: 'Répondre', reactions: 'Réactions', messages: 'Messages' }
-const CAP_CHIP: Record<CapStatus, { icon: typeof CheckCircle2; cls: string }> = {
-  available: { icon: CheckCircle2, cls: 'text-emerald-600' },
-  requires_approval: { icon: Clock, cls: 'text-amber-600' },
-  unavailable: { icon: CircleSlash, cls: 'text-slate-400' },
-}
+type TabKey = 'apercu' | 'publications' | 'commentaires' | 'calendrier' | 'conseils' | 'connexion'
 const QUESTIONS = [
   'Quelles publications fonctionnent le mieux, et pourquoi ?',
   'Quels jours et types de contenu obtiennent les meilleurs résultats ?',
@@ -86,10 +80,23 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
     ...(statsOK ? [{ key: 'publications' as const, label: 'Publications' }] : []),
     ...(commentsOK ? [{ key: 'commentaires' as const, label: 'Commentaires', badge: pending }] : []),
     ...(statsOK ? [{ key: 'calendrier' as const, label: 'Calendrier' }, { key: 'conseils' as const, label: 'Conseils IA' }] : []),
+    { key: 'connexion', label: 'Connexion' },
   ]
   const wanted = params.get('tab') as TabKey | null
   const tab: TabKey = tabs.some((t) => t.key === wanted) ? wanted! : 'apercu'
   const setTab = (k: TabKey) => setParams(k === 'apercu' ? {} : { tab: k }, { replace: true })
+
+  // Retour de l'autorisation du réseau (la connexion se fait depuis cette page)
+  const returned = useRef(false)
+  useEffect(() => {
+    if (returned.current) return // évite le double message (React exécute les effets deux fois en développement)
+    returned.current = true
+    const err = params.get('error')
+    if (params.has('connected')) { toast('success', `Compte ${meta.label} connecté.`); nets.reload(); ana.reload(); comments.reload() }
+    if (err) toast('error', `Connexion échouée : ${err}`)
+    if (params.has('connected') || err) setParams({}, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function refresh() {
     setRefreshing(true)
@@ -147,17 +154,8 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
 
       {account?.last_error && <p className="mb-4 flex items-start gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700"><AlertTriangle size={16} className="mt-0.5 shrink-0" /> {account.last_error}</p>}
 
-      {/* Réseau non connecté */}
-      {!connected && (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-14 text-center">
-          <span className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-slate-50 ring-1 ring-slate-200"><Logo platform={platform} size={32} /></span>
-          <p className="text-lg font-semibold text-slate-800">{account?.status === 'expired' ? `La connexion à ${meta.label} a expiré` : `Connectez votre compte ${meta.label}`}</p>
-          <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
-            {net.configured ? 'Une fois connecté, vous retrouverez ici vos statistiques, vos publications, vos commentaires et des conseils.' : `L’application ${meta.label} n’est pas encore configurée côté serveur. La démarche est indiquée dans « Mes réseaux ».`}
-          </p>
-          <Link to="/networks" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"><Link2 size={15} /> Aller à « Mes réseaux »</Link>
-        </div>
-      )}
+      {/* Réseau non connecté: la connexion se fait ici, depuis la page du réseau */}
+      {!connected && <ConnectionPanel net={net} onChanged={() => { nets.reload(); ana.reload(); comments.reload() }} />}
 
       {connected && (
         <>
@@ -178,18 +176,17 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                   <Kpi label="Abonnés" value={fmtNum(stats.followers.latest)}
-                    delta={stats.followers.latest !== null && stats.followers.first !== null && stats.followers.series.length > 1 ? pctChange(stats.followers.latest, stats.followers.first) : undefined}
-                    hint={stats.followers.series.length > 1 ? 'sur la période' : 'évolution dès le 2e relevé'} />
-                  <Kpi label="Publications" value={fmtNum(stats.current.posts)} delta={pctChange(stats.current.posts, stats.previous.posts)} hint={`sur ${days} jours`} />
-                  <Kpi label="Interactions" value={stats.current.posts ? fmtNum(inter(stats.current)) : '—'} delta={pctChange(inter(stats.current), inter(stats.previous))} hint="J’aime + commentaires + partages + enreg." />
+                    delta={stats.followers.latest !== null && stats.followers.first !== null && stats.followers.series.length > 1 ? pctChange(stats.followers.latest, stats.followers.first) : undefined} />
+                  <Kpi label="Publications" value={fmtNum(stats.current.posts)} delta={pctChange(stats.current.posts, stats.previous.posts)} />
+                  <Kpi label="Interactions" value={stats.current.posts ? fmtNum(inter(stats.current)) : '—'} delta={pctChange(inter(stats.current), inter(stats.previous))} />
                   <Kpi label="Taux d’engagement" value={stats.current.engagement.rate === null ? '—' : `${(stats.current.engagement.rate * 100).toFixed(1)} %`}
-                    hint={stats.current.engagement.basis ? `base : ${stats.current.engagement.basis === 'reach' ? 'portée' : 'vues'}` : 'non calculable'} />
+                    hint={stats.current.engagement.basis ? `base : ${stats.current.engagement.basis === 'reach' ? 'portée' : 'vues'}` : undefined} />
                 </div>
 
                 <div className="grid gap-4 lg:grid-cols-5">
                   <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-3">
                     <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div><h2 className="text-lg font-semibold">Engagement</h2><p className="text-xs text-slate-400">interactions sur les {bucket === 'week' ? '8 dernières semaines' : '6 derniers mois'}</p></div>
+                      <h2 className="text-lg font-semibold">Engagement</h2>
                       <div className="flex rounded-full border border-slate-200 p-0.5 text-sm" role="group" aria-label="Regroupement">
                         {([['week', 'Hebdo'], ['month', 'Mensuel']] as const).map(([k, l]) => (
                           <button key={k} onClick={() => setBucket(k)} aria-pressed={bucket === k} className={`rounded-full px-3.5 py-1 font-medium ${bucket === k ? 'bg-brand-600 text-white' : 'text-slate-600'}`}>{l}</button>
@@ -205,7 +202,7 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
                 </div>
 
                 <Section title={<span className="flex items-center gap-2"><Trophy size={18} className="text-amber-500" /> Meilleures publications</span>}>
-                  {stats.top.length === 0 ? <p className="mt-3 text-sm text-slate-500">Aucune publication sur la période. Seules les publications récentes sont synchronisées.</p> : (
+                  {stats.top.length === 0 ? <p className="mt-3 text-sm text-slate-500">Aucune publication sur la période.</p> : (
                     <ol className="mt-3 space-y-3">
                       {stats.top.map((t, i) => {
                         const max = Math.max(...stats.top.map((x) => x.interactions), 1)
@@ -223,26 +220,11 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
                     </ol>
                   )}
                 </Section>
-
-                {!commentsOK && net.capabilities.comments.status !== 'available' && (
-                  <p className="flex items-start gap-2 rounded-xl bg-slate-100 p-3 text-xs text-slate-600"><MessageSquare size={14} className="mt-0.5 shrink-0" /><span><strong>Commentaires :</strong> {net.capabilities.comments.note}</span></p>
-                )}
               </div>
             ) : <ErrorBox error={ana.error ?? 'Statistiques indisponibles'} onRetry={ana.reload} />
           ) : (
-            <Section title={`Ce que l’API officielle de ${meta.label} permet`}>
-              <p className="mt-1 mb-4 text-sm text-slate-500">{net.capabilities.stats.note}</p>
-              <ul className="space-y-3">
-                {(Object.keys(CAP_LABEL) as CapKey[]).filter((k) => k !== 'publish' && k !== 'schedule').map((k) => {
-                  const c = CAP_CHIP[net.capabilities[k].status]
-                  return (
-                    <li key={k} className="flex gap-2.5 text-sm">
-                      <c.icon size={16} className={`mt-0.5 shrink-0 ${c.cls}`} />
-                      <span><span className="font-medium text-slate-800">{CAP_LABEL[k]}</span><span className="block text-xs leading-relaxed text-slate-500">{net.capabilities[k].note}</span></span>
-                    </li>
-                  )
-                })}
-              </ul>
+            <Section title={`Statistiques de ${meta.label}`}>
+              <p className="mt-1 text-sm text-slate-600">{net.capabilities.stats.note}</p>
             </Section>
           ))}
 
@@ -260,9 +242,88 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
 
           {/* ---------- Conseils IA ---------- */}
           {tab === 'conseils' && <Advice platform={platform} label={meta.label} days={days} />}
+
+          {/* ---------- Connexion et fonctionnalités ---------- */}
+          {tab === 'connexion' && <ConnectionPanel net={net} onChanged={() => { nets.reload(); ana.reload(); comments.reload() }} />}
         </>
       )}
     </>
+  )
+}
+
+/** Connexion du compte, révocation et fonctionnalités de ce réseau: chaque page de réseau est indépendante. */
+function ConnectionPanel({ net, onChanged }: { net: NetworkInfo; onChanged: () => void }) {
+  const toast = useToast()
+  const [busy, setBusy] = useState<'connect' | 'disconnect' | null>(null)
+  const meta = PLATFORM_META[net.platform]
+  const account = net.accounts[0]
+  const active = account?.status === 'active'
+
+  async function connect() {
+    setBusy('connect')
+    try {
+      const { url } = await api<{ url: string }>(`/connections/${net.platform}/start`, { method: 'POST' })
+      window.location.href = url
+    } catch (e) {
+      toast('error', (e as Error).message)
+      setBusy(null)
+    }
+  }
+
+  async function disconnect() {
+    if (!account || !confirm(`Déconnecter ${account.account_name ?? 'ce compte'} ? Les jetons seront supprimés et l’accès révoqué quand le réseau le permet.`)) return
+    setBusy('disconnect')
+    try {
+      const r = await api<{ revoked: boolean }>(`/connections/${account.id}`, { method: 'DELETE' })
+      toast('success', r.revoked ? 'Compte déconnecté et accès révoqué.' : 'Compte déconnecté. Pour révoquer totalement l’accès, retirez l’application dans les réglages du réseau.')
+      onChanged()
+    } catch (e) {
+      toast('error', (e as Error).message)
+    }
+    setBusy(null)
+  }
+
+
+  return (
+    <div className="space-y-4">
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-slate-50 ring-1 ring-slate-200"><Logo platform={net.platform} size={32} /></span>
+          <div className="min-w-0 flex-1">
+            <p className="text-lg font-semibold text-slate-900">
+              {active ? `Compte ${meta.label} connecté` : account?.status === 'expired' ? `La connexion à ${meta.label} a expiré` : `Connectez votre compte ${meta.label}`}
+            </p>
+            {(active || !net.configured) && (
+              <p className="text-sm text-slate-500">
+                {active
+                  ? <>{account.account_name}{account.expires_at ? ` · valable jusqu’au ${format(new Date(account.expires_at), 'd MMMM yyyy', { locale: fr })}` : ''}</>
+                  : 'Application non configurée'}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={connect} disabled={!net.configured || busy !== null} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+              {busy === 'connect' ? <Loader2 size={15} className="animate-spin" /> : <Link2 size={15} />} {account ? 'Reconnecter' : 'Connecter mon compte'}
+            </button>
+            {account && (
+              <button onClick={disconnect} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50">
+                {busy === 'disconnect' ? <Loader2 size={15} className="animate-spin" /> : <Unplug size={15} />} Déconnecter
+              </button>
+            )}
+          </div>
+        </div>
+
+        {!net.configured && (
+          <details className="group mt-4 rounded-xl bg-amber-50 text-amber-900">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-3 text-sm font-medium">
+              <span className="flex items-center gap-2"><AlertTriangle size={15} /> Comment activer {meta.label} ?</span>
+              <ChevronDown size={15} className="transition group-open:rotate-180" />
+            </summary>
+            <p className="px-3 pb-3 text-xs leading-relaxed">{net.setupHint}</p>
+          </details>
+        )}
+      </section>
+    </div>
   )
 }
 
@@ -284,14 +345,14 @@ function PostsTable({ data, loading, error, reload, days }: { data: PostItem[] |
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h2 className="text-lg font-semibold">Publications · {days} jours</h2><p className="text-xs text-slate-400">{rows.length} publication(s) suivie(s). Une colonne n’apparaît que si le réseau fournit la donnée.</p></div>
+        <h2 className="text-lg font-semibold">Publications · {days} jours <span className="text-sm font-normal text-slate-400">({rows.length})</span></h2>
         <div className="flex rounded-xl bg-slate-100 p-0.5 text-sm" role="group" aria-label="Tri">
           {([['best', 'Meilleures'], ['worst', 'Moins bonnes'], ['recent', 'Récentes']] as const).map(([k, l]) => (
             <button key={k} aria-pressed={sort === k} onClick={() => setSort(k)} className={`rounded-[0.6rem] px-3 py-1.5 font-medium ${sort === k ? 'bg-white shadow-sm' : 'text-slate-500'}`}>{l}</button>
           ))}
         </div>
       </div>
-      {rows.length === 0 ? <p className="mt-4 rounded-xl bg-slate-50 p-6 text-center text-sm text-slate-500">Aucune publication sur cette période. Seules les publications récentes du compte sont synchronisées.</p> : (
+      {rows.length === 0 ? <p className="mt-4 rounded-xl bg-slate-50 p-6 text-center text-sm text-slate-500">Aucune publication sur cette période.</p> : (
         <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
           <table className="w-full min-w-[40rem] text-left text-sm">
             <thead className="bg-slate-50 text-xs text-slate-500">
@@ -340,7 +401,6 @@ function CommentsList({ all, onChange }: { all: CommentRow[]; onChange: () => vo
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-12 text-center">
           <MessageSquare size={32} className="mx-auto mb-2 text-slate-300" />
           <p className="font-medium text-slate-700">{all.length === 0 ? 'Aucun commentaire pour le moment' : 'Aucun commentaire ne correspond'}</p>
-          <p className="mt-1 text-sm text-slate-500">{all.length === 0 ? 'Cliquez sur « Actualiser ». Seuls les commentaires des publications récentes sont synchronisés.' : 'Modifiez la recherche ou le filtre.'}</p>
         </div>
       ) : <ul className="space-y-3">{rows.map((c) => <li key={c.id}><CommentCard c={c} onChange={onChange} /></li>)}</ul>}
     </div>
@@ -370,8 +430,7 @@ function Advice({ platform, label, days }: { platform: Platform; label: string; 
   return (
     <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]">
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-slate-500">Analyse de vos résultats {label} sur {days} jours, avec des recommandations précises.</p>
+        <div className="flex flex-wrap items-center justify-end gap-3">
           <button onClick={analyze} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 disabled:opacity-60">
             {busy === 'analyze' ? <Loader2 size={16} className="animate-spin" /> : <TrendingUp size={16} />} Analyser {label}
           </button>
@@ -382,9 +441,8 @@ function Advice({ platform, label, days }: { platform: Platform; label: string; 
               <>
                 <p className="mb-3 text-xs text-slate-500">Basé sur {analysis.basedOn.publications} publication(s)</p>
                 <Markdown text={analysis.analysis} />
-                <p className="mt-4 border-t border-slate-200 pt-3 text-[11px] text-slate-400">Conseils indicatifs, fondés sur les données synchronisées. Vérifiez-les avant d’agir.</p>
               </>))
-            : <div className="flex flex-col items-center gap-2 py-6 text-center text-slate-400"><Sparkles size={28} /><p className="max-w-sm text-sm">Lancez l’analyse pour obtenir une synthèse, ce qui fonctionne, ce qui freine et des recommandations stratégiques.</p></div>}
+            : <div className="flex flex-col items-center gap-2 py-6 text-center text-slate-300"><Sparkles size={28} /></div>}
         </div>
       </section>
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

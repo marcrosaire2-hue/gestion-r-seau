@@ -142,7 +142,7 @@ export function PostCalendar({ platform }: { platform: Platform }) {
       )}
 
       {data && inPeriod.length === 0 && (
-        <p className="mt-3 text-sm text-slate-500">Aucune publication suivie sur cette période. Seules les publications récentes du compte sont synchronisées.</p>
+        <p className="mt-3 text-sm text-slate-500">Aucune publication sur cette période.</p>
       )}
 
       {openDay && (
