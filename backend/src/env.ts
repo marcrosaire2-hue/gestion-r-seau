@@ -28,9 +28,16 @@ const schema = z.object({
   ANTHROPIC_MODEL: z.string().default('claude-sonnet-5-5'),
 });
 
-const parsed = schema.safeParse(
-  Object.fromEntries(Object.entries(process.env).map(([k, v]) => [k, v === '' ? undefined : v])),
+const raw: Record<string, string | undefined> = Object.fromEntries(
+  Object.entries(process.env).map(([k, v]) => [k, v === '' ? undefined : v]),
 );
+// Sur Render, l'adresse publique du service est fournie automatiquement (RENDER_EXTERNAL_URL).
+// Le site est servi par le même service: l'API et le frontend ont donc la même adresse.
+if (raw.RENDER_EXTERNAL_URL) {
+  raw.PUBLIC_API_URL ??= raw.RENDER_EXTERNAL_URL;
+  raw.FRONTEND_URL ??= raw.PUBLIC_API_URL;
+}
+const parsed = schema.safeParse(raw);
 if (!parsed.success) {
   console.error('Configuration invalide (.env) :');
   for (const i of parsed.error.issues) console.error(` - ${i.path.join('.')}: ${i.message}`);

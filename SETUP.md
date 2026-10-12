@@ -53,3 +53,16 @@ Renseignez ensuite les identifiants dans `backend/.env`. Tant qu'ils manquent, l
 cd backend && npm run typecheck && npm test
 cd frontend && npm run build
 ```
+
+## 7. Déploiement sur Render
+
+Un seul service (`render.yaml`) sert l'API **et** le site: une seule adresse, pas de CORS. L'adresse publique est détectée automatiquement (`RENDER_EXTERNAL_URL`).
+
+1. **Atlas → Network Access**: Render n'a pas d'IP fixe sur l'offre gratuite; autorisez `0.0.0.0/0` (le mot de passe de la base doit être fort).
+2. **Créer l'utilisateur de production** (base séparée `boussole_prod`), depuis `backend/`:
+   - PowerShell: `$env:MONGODB_DB="boussole_prod"; npm run create-user -- marc <mot_de_passe_long>`
+3. **Render → New → Blueprint**, choisir le dépôt GitHub: Render lit `render.yaml`.
+4. **Variables à saisir** (tableau de bord Render): `MONGODB_URI`, `TOKEN_ENCRYPTION_KEY` (nouvelle: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`), `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`, et si besoin `FACEBOOK_CONFIG_ID`, `ANTHROPIC_API_KEY`. `JWT_SECRET` est généré par Render.
+5. **Meta**: remplacer l'URI de redirection par `https://<votre-service>.onrender.com/api/oauth/facebook/callback` (Facebook Login for Business → Paramètres), puis « Vérifier l'URI ».
+6. **Offre gratuite**: le service s'endort après ~15 min sans visite; la synchronisation automatique (toutes les 15 min) ne tourne alors pas et le premier chargement prend ~30 s. Pour un suivi continu, passer à l'offre **Starter** (`plan: starter` dans `render.yaml`).
+7. **Ne pas partager les secrets**: ils restent dans Render (variables d'environnement), jamais dans Git.

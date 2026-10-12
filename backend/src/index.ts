@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
@@ -17,7 +20,18 @@ import { startScheduler } from './services/scheduler';
 
 const app = express();
 app.set('trust proxy', 1);
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        // Les photos de profil des réseaux (Facebook, Instagram…) viennent de leurs propres serveurs HTTPS.
+        'img-src': ["'self'", 'data:', 'https:'],
+        'media-src': ["'self'", 'https:'],
+      },
+    },
+  }),
+);
 app.use(cors({ origin: env.FRONTEND_URL }));
 app.use(rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false }));
 
@@ -34,6 +48,19 @@ app.use('/api/posts', posts);
 app.use('/api/comments', comments);
 app.use('/api/insights', insights);
 app.use('/api/ai', rateLimit({ windowMs: 60_000, limit: 20 }), ai);
+
+// En production, le même service sert le site (frontend/dist): une seule adresse, pas de CORS.
+const dist = fileURLToPath(new URL('../../frontend/dist', import.meta.url));
+if (fs.existsSync(path.join(dist, 'index.html'))) {
+  app.use('/assets', express.static(path.join(dist, 'assets'), { immutable: true, maxAge: '1y', fallthrough: false }));
+  app.use(express.static(dist, { index: false, maxAge: '1h' }));
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/api') || req.path.startsWith('/media')) return next();
+    res.setHeader('Cache-Control', 'no-cache'); // index.html doit toujours être revalidé après un déploiement
+    res.sendFile(path.join(dist, 'index.html'));
+  });
+  console.log('Site servi depuis', dist);
+}
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   if (err instanceof ZodError)

@@ -1,0 +1,33 @@
+# Déploiement Render (Blueprint): un seul service qui sert l'API et le site (frontend/dist).
+# Les valeurs « sync: false » sont saisies dans le tableau de bord Render, jamais dans ce fichier.
+services:
+  - type: web
+    name: boussole
+    runtime: node
+    region: frankfurt          # le plus proche de l'Afrique de l'Ouest
+    plan: free                 # « starter » (7 $/mois) pour un service toujours actif: voir SETUP.md
+    buildCommand: npm --prefix frontend ci --include=dev && npm --prefix frontend run build && npm --prefix backend ci
+    startCommand: npm --prefix backend start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: MONGODB_DB
+        value: boussole_prod        # base séparée de celle de développement
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TOKEN_ENCRYPTION_KEY   # 64 caractères hexadécimaux (voir SETUP.md)
+        sync: false
+      - key: FACEBOOK_APP_ID
+        sync: false
+      - key: FACEBOOK_APP_SECRET
+        sync: false
+      - key: FACEBOOK_CONFIG_ID     # facultatif
+        sync: false
+      - key: FACEBOOK_PAGE_ID       # facultatif
+        sync: false
+      - key: ANTHROPIC_API_KEY      # facultatif (Assistant IA)
+        sync: false
