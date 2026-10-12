@@ -20,6 +20,7 @@ export const C = {
   metrics: col('post_metrics'),
   snapshots: col('account_snapshots'),
   activity: col('activity_log'),
+  aiCache: col('ai_cache'),
 };
 
 export const newId = () => randomUUID();
@@ -50,6 +51,9 @@ export async function initDb() {
     C.metrics.createIndex({ user_id: 1, published_at: -1 }),
     C.snapshots.createIndex({ connection_id: 1, captured_at: 1 }),
     C.activity.createIndex({ user_id: 1, created_at: -1 }),
+    // Analyses IA mémorisées 6 h (suppression automatique)
+    C.aiCache.createIndex({ created_at: 1 }, { expireAfterSeconds: 6 * 3600 }),
+    C.aiCache.createIndex({ user_id: 1, key: 1 }, { unique: true }),
   ]);
   // Comptes antérieurs aux rôles (créés par le propriétaire en ligne de commande): administrateurs.
   await C.users.updateMany({ role: { $exists: false } }, { $set: { role: 'admin' } });

@@ -6,7 +6,7 @@ import { PLATFORM_LIST, PLATFORM_META } from '../lib/platforms'
 import { Markdown } from '../components/Markdown'
 import { useToast } from '../components/ui'
 
-interface Analysis { empty: boolean; analysis: string; basedOn: { publications: number; networks: string[] } }
+interface Analysis { empty: boolean; analysis: string; basedOn: { publications: number; networks: string[] }; unverified?: string[] }
 interface Answer { empty: boolean; answer: string }
 
 const QUESTIONS = [
@@ -105,6 +105,7 @@ export default function Assistant() {
                       <button onClick={() => copy(analysis.analysis)} className="inline-flex items-center gap-1 font-medium text-brand-700 hover:underline"><Copy size={12} /> Copier</button>
                     </div>
                     <Markdown text={analysis.analysis} />
+                    {!!analysis.unverified?.length && <p className="mt-3 text-xs text-amber-700">Chiffres à vérifier : {analysis.unverified.join(", ")}</p>}
                   </>
                 )}
               </>

@@ -24,6 +24,13 @@ const schema = z.object({
   FACEBOOK_PAGE_ID: z.string().optional(),
   /** Facebook Login for Business: identifiant de la configuration (Facebook Login for Business > Configurations). */
   FACEBOOK_CONFIG_ID: z.string().optional(),
+  /** Assistant IA: tout fournisseur au format OpenAI (Gemini par défaut, gratuit). Clé créée sur aistudio.google.com/app/apikey. */
+  AI_API_KEY: z.string().optional(),
+  AI_BASE_URL: z.string().url().default('https://generativelanguage.googleapis.com/v1beta/openai'),
+  AI_MODEL: z.string().default('gemini-3.5-flash'),
+  /** Modèle de secours si le principal est saturé (erreurs 429/5xx). */
+  AI_FALLBACK_MODEL: z.string().default('gemini-3-flash-preview'),
+  /** Repli facultatif: API Anthropic (payante), utilisée seulement si AI_API_KEY est absente. */
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default('claude-sonnet-5-5'),
 });

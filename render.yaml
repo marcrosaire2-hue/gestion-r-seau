@@ -29,5 +29,5 @@ services:
         sync: false
       - key: FACEBOOK_PAGE_ID       # facultatif
         sync: false
-      - key: ANTHROPIC_API_KEY      # facultatif (Assistant IA)
+      - key: AI_API_KEY             # Assistant IA (clé Gemini gratuite: aistudio.google.com/app/apikey)
         sync: false

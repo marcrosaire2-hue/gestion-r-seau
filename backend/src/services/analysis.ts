@@ -85,13 +85,27 @@ export async function buildContext(userId: string, days: number, focus?: Platfor
       }
       for (const e of Object.values(byType)) e.interactions_moyennes = Math.round(e.interactions_moyennes);
 
+      const curP = period(p, cur);
+      const prevP = period(p, prev);
+      const first = fol[0]?.followers ?? null;
+      const last = fol.at(-1)?.followers ?? null;
+      // Variations calculées ici (jamais par le modèle): null quand il n'y a pas de base de comparaison.
+      const pct = (c: number | null, b: number | null) => (c !== null && b !== null && b > 0 ? Math.round(((c - b) / b) * 1000) / 10 : null);
+
       return {
         reseau: providers[p].label,
         connecte: connected.has(p),
         statistiques_disponibles_via_api: providers[p].capabilities.stats.status === 'available',
-        periode_actuelle: period(p, cur),
-        periode_precedente: period(p, prev),
-        abonnes: { premier_releve: fol[0]?.followers ?? null, dernier_releve: fol.at(-1)?.followers ?? null, nombre_releves: fol.length },
+        periode_actuelle: curP,
+        periode_precedente: prevP,
+        variation_pct: {
+          publications: pct(curP.publications, prevP.publications),
+          interactions: pct(curP.interactions_total, prevP.interactions_total),
+          vues: pct(curP.vues, prevP.vues),
+          portee: pct(curP.portee, prevP.portee),
+          abonnes: pct(last, first),
+        },
+        abonnes: { premier_releve: first, dernier_releve: last, nombre_releves: fol.length },
         meilleures_publications: ranked.slice(0, 3).map(brief),
         moins_bonnes_publications: ranked.length > 3 ? ranked.slice(-3).reverse().map(brief) : [],
         par_jour_de_semaine: byDay,
@@ -102,4 +116,31 @@ export async function buildContext(userId: string, days: number, focus?: Platfor
 
   const totalPosts = platforms.reduce((a, p) => a + p.periode_actuelle.publications + p.periode_precedente.publications, 0);
   return { totalPosts, platforms, context: { periode_jours: days, fuseau: 'heure du serveur', reseaux: platforms } };
+}
+
+/** Tous les nombres présents dans les données envoyées au modèle. */
+function collectNumbers(v: unknown, out: number[] = []): number[] {
+  if (typeof v === 'number' && Number.isFinite(v)) out.push(v);
+  else if (Array.isArray(v)) v.forEach((x) => collectNumbers(x, out));
+  else if (v && typeof v === 'object') Object.values(v).forEach((x) => collectNumbers(x, out));
+  return out;
+}
+
+/**
+ * Garde-fou contre les chiffres inventés: renvoie les nombres cités dans la réponse qui n'existent pas dans les données
+ * (à tolérance d'arrondi près). Les petits entiers (comptages, rangs) et les années sont ignorés.
+ * Un chiffre listé ici est « à vérifier », pas forcément faux (le modèle a pu calculer une somme).
+ */
+export function unverifiedNumbers(text: string, context: unknown): string[] {
+  const known = collectNumbers(context);
+  const found = text.match(/\d+(?:[   ]\d{3})*(?:[.,]\d+)?/g) ?? [];
+  const bad = new Set<string>();
+  for (const raw of found) {
+    const v = parseFloat(raw.replace(/[   ]/g, '').replace(',', '.'));
+    if (!Number.isFinite(v)) continue;
+    if (Number.isInteger(v) && (v < 100 || (v >= 1990 && v <= 2100))) continue;
+    const ok = known.some((k) => Math.abs(k - v) <= Math.max(0.1, Math.abs(k) * 0.02) || Math.abs(Math.abs(k) - v) <= Math.max(0.1, Math.abs(k) * 0.02));
+    if (!ok) bad.add(raw.trim());
+  }
+  return [...bad].slice(0, 8);
 }

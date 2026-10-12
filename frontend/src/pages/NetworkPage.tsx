@@ -21,7 +21,7 @@ interface NetStats {
   followers: { latest: number | null; first: number | null; series: { at: string; value: number }[] }
   top: { remote_id: string; caption: string | null; permalink: string | null; published_at: string; interactions: number }[]
 }
-interface Analysis { empty: boolean; analysis: string; basedOn: { publications: number; networks: string[] } }
+interface Analysis { empty: boolean; analysis: string; basedOn: { publications: number; networks: string[] }; unverified?: string[] }
 
 const inter = (p: Period) => (p.likes ?? 0) + (p.comments ?? 0) + (p.shares ?? 0) + (p.saved ?? 0)
 
@@ -441,6 +441,7 @@ function Advice({ platform, label, days }: { platform: Platform; label: string; 
               <>
                 <p className="mb-3 text-xs text-slate-500">Basé sur {analysis.basedOn.publications} publication(s)</p>
                 <Markdown text={analysis.analysis} />
+                {!!analysis.unverified?.length && <p className="mt-3 text-xs text-amber-700">Chiffres à vérifier : {analysis.unverified.join(", ")}</p>}
               </>))
             : <div className="flex flex-col items-center gap-2 py-6 text-center text-slate-300"><Sparkles size={28} /></div>}
         </div>
