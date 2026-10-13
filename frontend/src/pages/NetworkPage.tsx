@@ -113,7 +113,7 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
 
   const fit = connected && statsOK && tab === 'apercu'
   return (
-    <div className={fit ? 'flex flex-col lg:h-[calc(100vh-8rem)] lg:min-h-[34rem]' : ''}>
+    <div className={fit ? 'flex flex-col xl:h-[calc(100vh-8rem)] xl:min-h-[37rem]' : ''}>
       {/* En-tête */}
       <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -186,7 +186,7 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
                 .flatMap(([k, l]) => (cur[k] === null ? [] : [{ l: l as string, v: cur[k] as number }]))
               const partsMax = Math.max(...parts.map((x) => x.v), 1)
               const tile = 'rounded-2xl bg-white p-3.5 shadow-sm'
-              const rows = [...(posts.data ?? [])].sort((a, b) => +new Date(b.published_at) - +new Date(a.published_at)).slice(0, 4)
+              const rows = [...(posts.data ?? [])].sort((a, b) => +new Date(b.published_at) - +new Date(a.published_at)).slice(0, 3)
               return (
                 <div className="flex min-h-0 flex-1 flex-col gap-3">
                   {/* Rangée 1: abonnés + chiffres clés */}
@@ -221,8 +221,8 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
                   </div>
 
                   {/* Rangée 2: engagement + détail + commentaires / meilleures publications */}
-                  <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-12">
-                    <section className={`${tile} flex min-h-0 flex-col lg:col-span-5`}>
+                  <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-12 xl:min-h-[12.5rem]">
+                    <section className={`${tile} flex min-h-0 min-w-0 flex-col overflow-hidden lg:col-span-12 xl:col-span-5`}>
                       <div className="flex shrink-0 items-center justify-between gap-2">
                         <div>
                           <h2 className="text-base font-semibold text-slate-900">Engagement</h2>
@@ -235,11 +235,11 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
                         </div>
                       </div>
                       <div className="min-h-0 flex-1">
-                        {tl.error ? <ErrorBox error={tl.error} onRetry={tl.reload} /> : tl.data ? <EngagementChart data={tl.data} className="h-48 lg:h-full" /> : <Spinner />}
+                        {tl.error ? <ErrorBox error={tl.error} onRetry={tl.reload} /> : tl.data ? <EngagementChart data={tl.data} className="h-48 xl:h-full xl:min-h-[7rem]" /> : <Spinner />}
                       </div>
                     </section>
 
-                    <section className={`${tile} flex min-h-0 flex-col lg:col-span-3`}>
+                    <section className={`${tile} flex min-h-0 min-w-0 flex-col lg:col-span-6 xl:col-span-3`}>
                       <h2 className="shrink-0 text-base font-semibold text-slate-900">Détail des interactions</h2>
                       {parts.length === 0 ? <p className="mt-3 text-sm text-slate-400">Pas de détail fourni.</p> : (
                         <ul className="mt-3 flex min-h-0 flex-1 flex-col justify-around gap-2 overflow-hidden">
@@ -253,7 +253,7 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
                       )}
                     </section>
 
-                    <section className={`${tile} flex min-h-0 flex-col lg:col-span-4`}>
+                    <section className={`${tile} flex min-h-0 min-w-0 flex-col lg:col-span-6 xl:col-span-4`}>
                       {commentsOK ? (
                         <>
                           <div className="flex shrink-0 items-center justify-between">
@@ -292,7 +292,7 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
                   </div>
 
                   {/* Rangée 3: publications récentes + évolution des abonnés */}
-                  <div className="grid shrink-0 gap-3 lg:h-40 lg:grid-cols-12">
+                  <div className="grid shrink-0 gap-3 lg:h-36 lg:grid-cols-12">
                     <section className={`${tile} flex min-h-0 flex-col lg:col-span-7`}>
                       <div className="flex shrink-0 items-center justify-between">
                         <h2 className="text-base font-semibold text-slate-900">Publications récentes</h2>

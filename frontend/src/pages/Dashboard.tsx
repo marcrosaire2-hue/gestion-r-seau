@@ -98,7 +98,7 @@ export default function Dashboard() {
   const card = 'flex min-h-0 flex-col rounded-2xl bg-white p-4 shadow-sm'
 
   return (
-    <div className="flex flex-col gap-3 lg:h-[calc(100vh-8rem)] lg:min-h-[34rem] lg:overflow-hidden">
+    <div className="flex flex-col gap-3 lg:h-[calc(100vh-8rem)] lg:min-h-[36rem] lg:overflow-hidden">
       {/* En-tête */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">Bienvenue <span className="capitalize">{user}</span></h1>
@@ -137,7 +137,7 @@ export default function Dashboard() {
       </div>
 
       {/* Graphique + réseaux */}
-      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-3">
+      <div className="grid min-h-0 flex-1 gap-3 lg:min-h-[16.5rem] lg:grid-cols-3">
         <section className={`${card} lg:col-span-2`}>
           <div className="flex shrink-0 items-center justify-between gap-2">
             <h2 className="text-base font-semibold text-slate-900">Engagement</h2>
