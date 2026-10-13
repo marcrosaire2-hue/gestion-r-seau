@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Bell, ChevronDown, LayoutDashboard, LogOut, Sear
 import { api, type Platform } from '../lib/api'
 import { Logo, PLATFORM_META } from '../lib/platforms'
 import { getRole, getUser, setStoredRole, setToken } from '../lib/session'
+import { playNotification, unlockAudio } from '../lib/sound'
 
 interface Item { to: string; label: string; end?: boolean; icon?: LucideIcon; platform?: Platform }
 
@@ -39,12 +40,28 @@ export default function Layout() {
   const groups = role === 'admin' ? GROUPS.map((g) => (g.title === 'OUTILS' ? { ...g, items: [...g.items, USERS_ITEM] } : g)) : GROUPS
   const all = groups.flatMap((g) => g.items)
 
-  // Compteurs réels (commentaires à traiter par réseau), rafraîchis chaque minute et à chaque changement de page
+  // Le navigateur n'autorise le son qu'après une action de l'utilisateur: le premier clic ou la première touche l'autorise.
+  useEffect(() => {
+    const unlock = () => unlockAudio()
+    window.addEventListener('pointerdown', unlock)
+    window.addEventListener('keydown', unlock)
+    return () => { window.removeEventListener('pointerdown', unlock); window.removeEventListener('keydown', unlock) }
+  }, [])
+
+  // Compteurs réels (commentaires à traiter par réseau), rafraîchis toutes les 20 s et à chaque changement de page.
+  // Une sonnerie retentit chaque fois que le nombre de commentaires à traiter augmente (nouvelle notification).
+  const lastTotal = useRef<number | null>(null)
   useEffect(() => {
     let alive = true
-    const load = () => api<{ networks: NetCounts[] }>('/insights/dashboard').then((d) => alive && setNets(d.networks)).catch(() => {})
+    const load = () => api<{ networks: NetCounts[] }>('/insights/dashboard').then((d) => {
+      if (!alive) return
+      const total = d.networks.reduce((a, n) => a + (n.pendingComments ?? 0), 0)
+      if (lastTotal.current !== null && total > lastTotal.current) playNotification()
+      lastTotal.current = total
+      setNets(d.networks)
+    }).catch(() => {})
     load()
-    const id = setInterval(load, 60_000)
+    const id = setInterval(load, 20_000)
     return () => { alive = false; clearInterval(id) }
   }, [pathname])
 
@@ -53,6 +70,8 @@ export default function Layout() {
   const title = all.find((i) => i.to === pathname)?.label ?? ''
   const alerts = nets.reduce((a, n) => a + (n.pendingComments ?? 0), 0)
   const firstPending = nets.find((n) => (n.pendingComments ?? 0) > 0)?.platform
+  // Le titre de l'onglet montre les notifications même quand la page n'est pas affichée
+  useEffect(() => { document.title = alerts > 0 ? `(${alerts}) Boussole` : 'Boussole' }, [alerts])
   const bellTo = firstPending ? `/${firstPending}?tab=commentaires` : '/'
 
   const NavIcon = ({ i, size }: { i: Item; size: number }) => (i.platform ? <Logo platform={i.platform} size={size} /> : i.icon ? <i.icon size={size} /> : null)
