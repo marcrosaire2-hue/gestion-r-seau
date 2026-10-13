@@ -87,6 +87,7 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
   const setTab = (k: TabKey) => setParams(k === 'apercu' ? {} : { tab: k }, { replace: true })
 
   // Retour de l'autorisation du réseau (la connexion se fait depuis cette page)
+  const choose = params.get('choose') // identifiant d'une sélection de compte en attente (retour d'autorisation)
   const returned = useRef(false)
   useEffect(() => {
     if (returned.current) return // évite le double message (React exécute les effets deux fois en développement)
@@ -155,7 +156,14 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
       {account?.last_error && <p className="mb-4 flex items-start gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700"><AlertTriangle size={16} className="mt-0.5 shrink-0" /> {account.last_error}</p>}
 
       {/* Réseau non connecté: la connexion se fait ici, depuis la page du réseau */}
-      {!connected && <ConnectionPanel net={net} onChanged={() => { nets.reload(); ana.reload(); comments.reload() }} />}
+      {choose && (
+        <AccountPicker
+          id={choose}
+          platform={platform}
+          onDone={(ok) => { setParams({}, { replace: true }); nets.reload(); ana.reload(); comments.reload(); if (ok) { tl.reload(); posts.reload() } }}
+        />
+      )}
+      {!connected && !choose && <ConnectionPanel net={net} onChanged={() => { nets.reload(); ana.reload(); comments.reload() }} />}
 
       {connected && (
         <>
@@ -458,5 +466,59 @@ function Advice({ platform, label, days }: { platform: Platform; label: string; 
         {answer && <div className="mt-4 rounded-xl bg-slate-50 p-4"><p className="mb-2 text-xs font-medium text-slate-500">« {answer.q} »</p><Markdown text={answer.text} /></div>}
       </section>
     </div>
+  )
+}
+
+/** Choix du compte à connecter quand l'autorisation donne accès à plusieurs comptes (ex.: plusieurs Pages Facebook). */
+function AccountPicker({ id, platform, onDone }: { id: string; platform: Platform; onDone: (connected: boolean) => void }) {
+  const toast = useToast()
+  const { data, error, loading } = useFetch(() =>
+    api<{ platform: Platform; options: { id: string; name: string; avatar_url: string | null }[] }>(`/connections/pending/${id}`),
+  )
+  const [busy, setBusy] = useState<string | null>(null)
+  const noun = platform === 'facebook' ? 'Page' : 'compte'
+
+  async function pick(accountId: string, name: string) {
+    setBusy(accountId)
+    try {
+      await api(`/connections/pending/${id}/select`, { method: 'POST', body: { account_id: accountId } })
+      toast('success', `${name} connecté${noun === 'Page' ? 'e' : ''}.`)
+      onDone(true)
+    } catch (e) {
+      toast('error', (e as Error).message)
+      setBusy(null)
+    }
+  }
+
+  async function cancel() {
+    try { await api(`/connections/pending/${id}`, { method: 'DELETE' }) } catch { /* déjà expirée */ }
+    onDone(false)
+  }
+
+  if (loading && !data) return <Spinner />
+  if (error || !data) return <div className="mb-5"><ErrorBox error={error ?? 'Sélection indisponible'} /><button onClick={() => onDone(false)} className="mt-2 text-sm text-slate-500 hover:text-slate-800">Fermer</button></div>
+
+  return (
+    <section className="mb-5 rounded-2xl border border-brand-100 bg-white p-5 shadow-sm" aria-label={`Choisir la ${noun} à connecter`}>
+      <h2 className="text-lg font-semibold text-slate-900">Quelle {noun} voulez-vous connecter ?</h2>
+      <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+        {data.options.map((o) => (
+          <li key={o.id}>
+            <button
+              onClick={() => pick(o.id, o.name)}
+              disabled={busy !== null}
+              className="flex w-full items-center gap-3 rounded-xl border border-slate-200 p-3 text-left transition hover:border-brand-600 hover:bg-brand-50 disabled:opacity-60"
+            >
+              {o.avatar_url
+                ? <img src={o.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" referrerPolicy="no-referrer" />
+                : <span className="grid h-10 w-10 place-items-center rounded-full bg-slate-100"><Logo platform={platform} size={20} /></span>}
+              <span className="min-w-0 flex-1 truncate font-medium text-slate-800">{o.name}</span>
+              {busy === o.id ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <span className="text-sm font-medium text-brand-700">Connecter</span>}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <button onClick={cancel} disabled={busy !== null} className="mt-4 text-sm text-slate-500 hover:text-slate-800">Annuler</button>
+    </section>
   )
 }

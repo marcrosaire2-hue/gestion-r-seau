@@ -21,6 +21,7 @@ export const C = {
   snapshots: col('account_snapshots'),
   activity: col('activity_log'),
   aiCache: col('ai_cache'),
+  oauthPending: col('oauth_pending'),
 };
 
 export const newId = () => randomUUID();
@@ -51,6 +52,9 @@ export async function initDb() {
     C.metrics.createIndex({ user_id: 1, published_at: -1 }),
     C.snapshots.createIndex({ connection_id: 1, captured_at: 1 }),
     C.activity.createIndex({ user_id: 1, created_at: -1 }),
+    // Choix de compte en attente après autorisation (jetons chiffrés): suppression automatique après 10 minutes
+    C.oauthPending.createIndex({ created_at: 1 }, { expireAfterSeconds: 600 }),
+    C.oauthPending.createIndex({ id: 1 }, { unique: true }),
     // Analyses IA mémorisées 6 h (suppression automatique)
     C.aiCache.createIndex({ created_at: 1 }, { expireAfterSeconds: 6 * 3600 }),
     C.aiCache.createIndex({ user_id: 1, key: 1 }, { unique: true }),

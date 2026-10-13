@@ -6,7 +6,8 @@ import { C, logActivity, newId } from '../db';
 import { env } from '../env';
 import { ApiError } from '../http';
 import { isPlatform, providers, PLATFORMS } from '../providers';
-import { disconnect } from '../services/connections';
+import { decrypt } from '../crypto';
+import { disconnect, saveConnection } from '../services/connections';
 import { syncUser } from '../services/sync';
 
 const redirectUri = (platform: string) => `${env.PUBLIC_API_URL.replace(/\/$/, '')}/api/oauth/${platform}/callback`;
@@ -31,28 +32,29 @@ oauthCallback.get(
 
     const provider = providers[platform];
     try {
-      const token = await provider.exchange(code, redirectUri(platform));
-      const profile = await provider.profile(token.accessToken, token);
-      if (!profile.accountId) throw new ApiError('Identifiant de compte introuvable.', 502);
-      await C.connections.updateOne(
-        { user_id: st.user_id, platform, account_id: profile.accountId },
-        {
-          $set: {
-            account_name: profile.name,
-            avatar_url: profile.avatarUrl ?? null,
-            access_token_enc: encrypt(token.accessToken),
-            refresh_token_enc: token.refreshToken ? encrypt(token.refreshToken) : null,
-            expires_at: token.expiresAt ?? null,
-            scopes: token.scopes ?? [],
-            status: 'active',
-            last_error: null,
-            meta: profile.meta ?? {},
-          },
-          $setOnInsert: { id: newId(), created_at: new Date() },
-        },
-        { upsert: true },
-      );
-      await logActivity(st.user_id, 'connection.connected', platform, { account: profile.name });
+      // Réseau donnant accès à plusieurs comptes (ex.: plusieurs Pages Facebook): l'utilisateur choisit dans Boussole.
+      if (provider.listAccounts) {
+        const options = await provider.listAccounts(code, redirectUri(platform));
+        const preset = platform === 'facebook' && env.FACEBOOK_PAGE_ID ? options.find((o) => o.id === env.FACEBOOK_PAGE_ID) : undefined;
+        const chosen = preset ?? (options.length === 1 ? options[0] : undefined);
+        if (!chosen) {
+          const pendingId = newId();
+          await C.oauthPending.insertOne({
+            id: pendingId,
+            user_id: st.user_id,
+            platform,
+            options: options.map((o) => ({ id: o.id, name: o.name, avatar_url: o.avatarUrl ?? null, token_enc: encrypt(o.accessToken), scopes: o.scopes ?? [] })),
+            created_at: new Date(),
+          });
+          return back(`choose=${pendingId}`);
+        }
+        await saveConnection(st.user_id, platform, { accessToken: chosen.accessToken, accountId: chosen.id, scopes: chosen.scopes }, { accountId: chosen.id, name: chosen.name, avatarUrl: chosen.avatarUrl, meta: { kind: 'page' } });
+      } else {
+        const token = await provider.exchange(code, redirectUri(platform));
+        const profile = await provider.profile(token.accessToken, token);
+        if (!profile.accountId) throw new ApiError('Identifiant de compte introuvable.', 502);
+        await saveConnection(st.user_id, platform, token, profile);
+      }
       syncUser(st.user_id).catch((e) => console.warn('sync après connexion:', e.message));
       return back(`connected=${platform}`);
     } catch (e) {
@@ -114,3 +116,49 @@ connections.delete(
   }),
 );
 
+
+/* ---- Choix du compte après autorisation (ex.: quelle Page Facebook connecter) ---- */
+
+async function ownPending(userId: string, id: string) {
+  const p = await C.oauthPending.findOne({ id, user_id: userId }, { projection: { _id: 0 } });
+  if (!p) throw new ApiError('Cette sélection a expiré. Cliquez de nouveau sur « Connecter mon compte ».', 404);
+  return p;
+}
+
+// Liste des comptes proposés (jamais les jetons)
+connections.get(
+  '/pending/:id',
+  wrap(async (req, res) => {
+    const p = await ownPending(req.userId, String(req.params.id));
+    res.json({ platform: p.platform, options: p.options.map((o: any) => ({ id: o.id, name: o.name, avatar_url: o.avatar_url })) });
+  }),
+);
+
+connections.post(
+  '/pending/:id/select',
+  wrap(async (req, res) => {
+    const p = await ownPending(req.userId, String(req.params.id));
+    const accountId = String((req.body ?? {}).account_id ?? '');
+    const o = p.options.find((x: any) => x.id === accountId);
+    if (!o) throw new ApiError('Compte introuvable dans la sélection.', 404);
+    // Suppression d'abord (usage unique): un double clic ne crée rien de plus.
+    const taken = await C.oauthPending.deleteOne({ id: p.id });
+    if (!taken.deletedCount) throw new ApiError('Cette sélection a déjà été utilisée.', 409);
+    await saveConnection(
+      req.userId,
+      p.platform,
+      { accessToken: decrypt(o.token_enc), accountId: o.id, scopes: o.scopes },
+      { accountId: o.id, name: o.name, avatarUrl: o.avatar_url ?? undefined, meta: { kind: 'page' } },
+    );
+    syncUser(req.userId).catch((e) => console.warn('sync après choix:', e.message));
+    res.json({ ok: true, account: o.name });
+  }),
+);
+
+connections.delete(
+  '/pending/:id',
+  wrap(async (req, res) => {
+    await C.oauthPending.deleteOne({ id: String(req.params.id), user_id: req.userId });
+    res.status(204).end();
+  }),
+);

@@ -1,7 +1,7 @@
-import { C, NO_ID, logActivity } from '../db';
+import { C, NO_ID, logActivity, newId } from '../db';
 import { decrypt, encrypt } from '../crypto';
 import { ApiError } from '../http';
-import { providers, type Ctx, type Platform } from '../providers';
+import { providers, type Ctx, type Platform, type Profile, type TokenResult } from '../providers';
 
 export interface ConnectionRow {
   id: string;
@@ -99,4 +99,34 @@ export async function disconnect(userId: string, id: string) {
   ]);
   await logActivity(userId, 'connection.disconnected', conn.platform, { account: conn.account_name, revoked });
   return { revoked };
+}
+
+/**
+ * Enregistre (ou met à jour) le compte connecté d'un réseau. Un seul compte par réseau: si l'utilisateur en choisit un
+ * autre (ex.: une autre Page Facebook), l'ancien est déconnecté et ses données propres sont supprimées.
+ */
+export async function saveConnection(userId: string, platform: Platform, token: TokenResult, profile: Profile) {
+  await C.connections.updateOne(
+    { user_id: userId, platform, account_id: profile.accountId },
+    {
+      $set: {
+        account_name: profile.name,
+        avatar_url: profile.avatarUrl ?? null,
+        access_token_enc: encrypt(token.accessToken),
+        refresh_token_enc: token.refreshToken ? encrypt(token.refreshToken) : null,
+        expires_at: token.expiresAt ?? null,
+        scopes: token.scopes ?? [],
+        status: 'active',
+        last_error: null,
+        meta: profile.meta ?? {},
+      },
+      $setOnInsert: { id: newId(), created_at: new Date() },
+    },
+    { upsert: true },
+  );
+  const others = await C.connections.find({ user_id: userId, platform, account_id: { $ne: profile.accountId } }, { projection: { _id: 0, id: 1 } }).toArray();
+  for (const o of others) {
+    try { await disconnect(userId, o.id); } catch (e) { console.warn('remplacement du compte:', (e as Error).message); }
+  }
+  await logActivity(userId, 'connection.connected', platform, { account: profile.name });
 }

@@ -1,6 +1,6 @@
 import { env } from '../env';
 import { ApiError, form, httpJson } from '../http';
-import type { Provider, Ctx, MediaItem, RemotePost, RemoteComment } from './types';
+import type { AccountOption, Provider, Ctx, MediaItem, RemotePost, RemoteComment } from './types';
 
 const V = 'v23.0';
 const GRAPH = `https://graph.facebook.com/${V}`;
@@ -60,7 +60,8 @@ export const facebook: Provider = {
     return `https://www.facebook.com/${V}/dialog/oauth?${p}`;
   },
 
-  async exchange(code, redirectUri) {
+  /** Pages que l'utilisateur a autorisées (jeton de Page sans date d'expiration s'il vient d'un jeton utilisateur longue durée). */
+  async listAccounts(code, redirectUri): Promise<AccountOption[]> {
     const { data: short } = await httpJson<{ access_token: string }>(
       `${GRAPH}/oauth/access_token?${new URLSearchParams({
         client_id: env.FACEBOOK_APP_ID!,
@@ -77,14 +78,18 @@ export const facebook: Provider = {
         fb_exchange_token: short.access_token,
       })}`,
     );
-    const { data: pages } = await httpJson<{ data: { id: string; name: string; access_token: string }[] }>(
-      `${GRAPH}/me/accounts?fields=id,name,access_token&limit=100&access_token=${long.access_token}`,
+    const { data: pages } = await httpJson<{ data: { id: string; name: string; access_token: string; picture?: { data?: { url?: string } } }[] }>(
+      `${GRAPH}/me/accounts?fields=id,name,access_token,picture.type(large){url}&limit=100&access_token=${long.access_token}`,
     );
     if (!pages.data.length)
       throw new ApiError('Aucune Page Facebook trouvée. Vous devez administrer une Page, et l’avoir cochée lors de l’autorisation.', 422);
-    const page = (env.FACEBOOK_PAGE_ID && pages.data.find((p) => p.id === env.FACEBOOK_PAGE_ID)) || pages.data[0];
-    // Jeton de Page issu d'un jeton utilisateur longue durée: sans date d'expiration.
-    return { accessToken: page.access_token, accountId: page.id, scopes: SCOPES };
+    return pages.data.map((p) => ({ id: p.id, name: p.name, avatarUrl: p.picture?.data?.url, accessToken: p.access_token, scopes: SCOPES }));
+  },
+
+  async exchange(code, redirectUri) {
+    const pages = await this.listAccounts!(code, redirectUri);
+    const page = (env.FACEBOOK_PAGE_ID && pages.find((p) => p.id === env.FACEBOOK_PAGE_ID)) || pages[0];
+    return { accessToken: page.accessToken, accountId: page.id, scopes: SCOPES };
   },
 
   async profile(accessToken) {

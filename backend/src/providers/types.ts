@@ -55,6 +55,15 @@ export interface PublishResult {
   state: 'published' | 'processing';
 }
 
+/** Un compte que l'utilisateur peut choisir (ex.: une Page Facebook parmi celles qu'il administre). */
+export interface AccountOption {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+  accessToken: string;
+  scopes?: string[];
+}
+
 export interface Provider {
   id: Platform;
   label: string;
@@ -66,6 +75,8 @@ export interface Provider {
   setupHint: string;
   authUrl(state: string, redirectUri: string): string;
   exchange(code: string, redirectUri: string): Promise<TokenResult>;
+  /** Si présent: la connexion donne accès à PLUSIEURS comptes et l'utilisateur doit en choisir un. */
+  listAccounts?(code: string, redirectUri: string): Promise<AccountOption[]>;
   profile(accessToken: string, token: TokenResult): Promise<Profile>;
   refresh?(refreshOrAccessToken: string): Promise<TokenResult>;
   revoke?(accessToken: string): Promise<void>;
