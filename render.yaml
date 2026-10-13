@@ -29,5 +29,9 @@ services:
         sync: false
       - key: FACEBOOK_PAGE_ID       # facultatif
         sync: false
-      - key: AI_API_KEY             # Assistant IA (clé Gemini gratuite: aistudio.google.com/app/apikey)
+      - key: INSTAGRAM_APP_ID       # « ID de l'app Instagram » (produit Instagram de l'app Meta)
+        sync: false
+      - key: INSTAGRAM_APP_SECRET
+        sync: false
+      - key: AI_API_KEY            # Assistant IA (clé Gemini gratuite: aistudio.google.com/app/apikey)
         sync: false
