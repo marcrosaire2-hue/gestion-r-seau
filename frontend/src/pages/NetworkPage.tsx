@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } 
 import { useSearchParams } from 'react-router-dom'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { AlertTriangle, BarChart3, CalendarDays, ChevronDown, ExternalLink, Eye, FileText, Heart, Image as ImageIcon, Lightbulb, Link2, Loader2, MessageCircle, MessageSquare, MessagesSquare, RefreshCw, Search, Send, Sparkles, Trophy, TrendingUp, Unplug, Users, Video } from 'lucide-react'
+import { AlertTriangle, BarChart3, CalendarDays, CheckCheck, ChevronDown, ExternalLink, Eye, FileText, Heart, Image as ImageIcon, Lightbulb, Link2, Loader2, MessageCircle, MessageSquare, MessagesSquare, RefreshCw, Search, Send, Sparkles, Trophy, TrendingUp, Unplug, Users, Video } from 'lucide-react'
 import { api, type CommentRow, type NetworkInfo, type Platform } from '../lib/api'
 import { getRole } from '../lib/session'
 import { Logo, PLATFORM_META } from '../lib/platforms'
@@ -546,37 +546,61 @@ function CommentsList({ all, posts, onChange }: { all: CommentRow[]; posts: Post
     const when = (g: { post?: PostItem; comments: CommentRow[] }) => +new Date(g.post?.published_at ?? g.comments[0].commented_at ?? 0)
     return [...m.values()].sort((a, b) => when(b) - when(a))
   }, [rows, posts])
+  const tiles = ([
+    ['', 'Tous', all.length, <MessagesSquare key="t" size={20} />, 'bg-blue-500', 'text-blue-600', ''],
+    ['pending', 'À traiter', count('pending'), <MessageCircle key="p" size={20} />, 'bg-amber-500', 'text-amber-600', ''],
+    ['replied', 'Répondus', count('replied'), <Send key="r" size={19} />, 'bg-emerald-500', 'text-emerald-600', ''],
+    ['done', 'Traités', count('done'), <CheckCheck key="d" size={20} />, 'bg-slate-500', 'text-slate-600', ''],
+  ] as [CommentRow['status'] | '', string, number, ReactNode, string, string, string][])
   return (
-    <div>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {([['', 'Tous', all.length], ['pending', 'À traiter', count('pending')], ['replied', 'Répondus', count('replied')], ['done', 'Traités', count('done')]] as [CommentRow['status'] | '', string, number][]).map(([k, l, n]) => (
-          <button key={l} onClick={() => setStatus(k)} aria-pressed={status === k} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium ${status === k ? 'border-brand-700 bg-brand-700 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>{l} <span className={status === k ? 'text-white/80' : 'text-slate-400'}>{n}</span></button>
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3 min-[900px]:grid-cols-4">
+        {tiles.map(([k, l, n, ico, bg, tx]) => (
+          <button key={l} onClick={() => setStatus(k)} aria-pressed={status === k}
+            className={`flex min-w-0 items-center gap-3 rounded-2xl bg-white p-3.5 text-left shadow-sm transition hover:shadow-md ${status === k ? 'ring-2 ring-brand-600' : 'ring-1 ring-slate-100'}`}>
+            <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-white shadow-sm ${bg}`}>{ico}</span>
+            <span className="min-w-0">
+              <span className={`block truncate text-xs font-medium ${tx}`}>{l}</span>
+              <span className="block text-2xl leading-tight font-semibold tracking-tight text-slate-900">{n}</span>
+            </span>
+          </button>
         ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="flex items-center gap-3 text-base font-semibold text-slate-900">
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-700 text-white"><MessageCircle size={17} /></span> Commentaires
+          <span className="text-sm font-normal text-slate-400">({rows.length})</span>
+        </h2>
         <label className="relative ml-auto min-w-52 flex-1 sm:max-w-xs">
           <span className="sr-only">Rechercher dans les commentaires</span>
-          <Search size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-400" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher" className="w-full rounded-xl border border-slate-200 bg-white py-2 pr-3 pl-9 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500" />
+          <Search size={15} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher" className="w-full rounded-full bg-white py-2.5 pr-4 pl-10 text-sm shadow-sm ring-1 ring-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500" />
         </label>
       </div>
+
       {rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-12 text-center">
+        <div className="rounded-2xl bg-white px-4 py-12 text-center shadow-sm ring-1 ring-slate-100">
           <MessageSquare size={32} className="mx-auto mb-2 text-slate-300" />
           <p className="font-medium text-slate-700">{all.length === 0 ? 'Aucun commentaire pour le moment' : 'Aucun commentaire ne correspond'}</p>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-4">
           {groups.map((g) => (
-            <section key={g.key} className="overflow-hidden rounded-2xl bg-slate-50/60 ring-1 ring-slate-100">
-              <header className="border-b border-slate-200 bg-white px-4 py-3 md:px-5">
-                <p className="flex items-center gap-2 font-semibold text-slate-900">
-                  <span className="truncate">{g.post?.caption || g.comments[0].media_caption || (g.key === 'none' ? 'Publication inconnue' : '(sans légende)')}</span>
-                  {(g.post?.permalink || g.comments[0].media_url) && <a href={(g.post?.permalink || g.comments[0].media_url)!} target="_blank" rel="noreferrer" aria-label="Voir la publication" className="shrink-0 text-brand-700"><ExternalLink size={14} /></a>}
-                </p>
-                <p className="mt-0.5 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-500">
-                  {g.post && <span>{format(new Date(g.post.published_at), 'd MMM yyyy HH:mm', { locale: fr })}</span>}
-                  {g.post && METRIC_LABELS.filter(([k]) => k === 'likes' || k === 'shares').filter(([k]) => typeof g.post!.metrics[k] === 'number').map(([k, l]) => <span key={k}>{l} : <b className="text-slate-700">{fmtNum(g.post!.metrics[k])}</b></span>)}
-                  <span>{g.comments.length} commentaire{g.comments.length > 1 ? 's' : ''} affiché{g.comments.length > 1 ? 's' : ''}{typeof g.post?.metrics.comments === 'number' ? ` sur ${fmtNum(g.post.metrics.comments)}` : ''}</span>
-                </p>
+            <section key={g.key} className="overflow-hidden rounded-2xl bg-slate-50/70 ring-1 ring-slate-100">
+              <header className="flex items-start gap-3 bg-white px-4 py-3 md:px-5">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-700 text-white"><FileText size={16} /></span>
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 font-semibold text-slate-900">
+                    <span className="truncate">{g.post?.caption || g.comments[0].media_caption || (g.key === 'none' ? 'Publication inconnue' : '(sans légende)')}</span>
+                    {(g.post?.permalink || g.comments[0].media_url) && <a href={(g.post?.permalink || g.comments[0].media_url)!} target="_blank" rel="noreferrer" aria-label="Voir la publication" className="shrink-0 text-brand-700"><ExternalLink size={14} /></a>}
+                  </p>
+                  <p className="mt-0.5 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-500">
+                    {g.post && <span>{format(new Date(g.post.published_at), 'd MMM yyyy HH:mm', { locale: fr })}</span>}
+                    {g.post && METRIC_LABELS.filter(([k]) => k === 'likes' || k === 'shares').filter(([k]) => typeof g.post!.metrics[k] === 'number').map(([k, l]) => <span key={k}>{l} : <b className="text-slate-700">{fmtNum(g.post!.metrics[k])}</b></span>)}
+                    <span>{g.comments.length} commentaire{g.comments.length > 1 ? 's' : ''} affiché{g.comments.length > 1 ? 's' : ''}{typeof g.post?.metrics.comments === 'number' ? ` sur ${fmtNum(g.post.metrics.comments)}` : ''}</span>
+                  </p>
+                </div>
               </header>
               <ul className="space-y-3 p-3 md:p-4">{g.comments.map((c) => <li key={c.id}><CommentCard c={c} onChange={onChange} hideMedia /></li>)}</ul>
             </section>

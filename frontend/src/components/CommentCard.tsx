@@ -37,7 +37,7 @@ export function CommentCard({ c, onChange, hideMedia = false }: { c: CommentRow;
   }
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+    <article className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 md:p-5">
       <div className="flex items-start gap-3">
         <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-sm font-semibold uppercase ring-1 ${meta.soft}`} aria-hidden>{(c.author ?? '?').replace('@', '')[0] || '?'}</span>
         <div className="min-w-0 flex-1">
@@ -58,7 +58,7 @@ export function CommentCard({ c, onChange, hideMedia = false }: { c: CommentRow;
           <p className="mt-2.5 text-[15px] leading-relaxed whitespace-pre-wrap text-slate-800">{c.text}</p>
 
           {c.reply_text && (
-            <div className="mt-3 rounded-xl border-l-4 border-brand-600 bg-brand-50/60 p-3 text-sm text-slate-700">
+            <div className="mt-3 rounded-xl border-l-4 border-brand-700 bg-brand-50/60 p-3 text-sm text-slate-700">
               <p className="mb-0.5 text-xs font-medium text-brand-700">Votre réponse</p>
               {c.reply_text}
             </div>
@@ -67,13 +67,13 @@ export function CommentCard({ c, onChange, hideMedia = false }: { c: CommentRow;
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {c.status === 'pending' ? (
               <>
-                <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-brand-700"><Send size={14} /> Répondre</button>
-                <button onClick={() => run('done')} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3.5 py-1.5 text-sm font-medium hover:bg-slate-50 disabled:opacity-60">
+                <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="inline-flex items-center gap-2 rounded-full bg-brand-700 px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-600"><Send size={14} /> Répondre</button>
+                <button onClick={() => run('done')} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-60">
                   {busy === 'done' ? <Loader2 size={14} className="animate-spin" /> : <CheckCheck size={14} />} Marquer comme traité
                 </button>
               </>
             ) : (
-              <button onClick={() => run('reopen')} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3.5 py-1.5 text-sm font-medium hover:bg-slate-50 disabled:opacity-60">
+              <button onClick={() => run('reopen')} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-60">
                 {busy === 'reopen' ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />} Rouvrir
               </button>
             )}
@@ -88,10 +88,10 @@ export function CommentCard({ c, onChange, hideMedia = false }: { c: CommentRow;
                 </div>
               )}
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <button onClick={() => run('reply')} disabled={!text.trim() || busy !== null} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50">
+                <button onClick={() => run('reply')} disabled={!text.trim() || busy !== null} className="inline-flex items-center gap-2 rounded-full bg-brand-700 px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-600 disabled:opacity-50">
                   {busy === 'reply' ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Envoyer la réponse
                 </button>
-                <button onClick={() => run('ai')} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-medium hover:bg-slate-50 disabled:opacity-60">
+                <button onClick={() => run('ai')} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 disabled:opacity-60">
                   {busy === 'ai' ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} className="text-brand-600" />} Suggérer (IA)
                 </button>
                 <button onClick={() => setOpen(false)} className="ml-auto text-sm text-slate-500 hover:text-slate-800">Annuler</button>
