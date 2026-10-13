@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } 
 import { useSearchParams } from 'react-router-dom'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { AlertTriangle, ChevronDown, ExternalLink, Link2, Loader2, MessageSquare, RefreshCw, Search, Send, Sparkles, Trophy, TrendingUp, Unplug } from 'lucide-react'
+import { AlertTriangle, BarChart3, CalendarDays, ChevronDown, ExternalLink, Eye, FileText, Heart, Image as ImageIcon, Lightbulb, Link2, Loader2, MessageCircle, MessageSquare, MessagesSquare, RefreshCw, Search, Send, Sparkles, Trophy, TrendingUp, Unplug, Users, Video } from 'lucide-react'
 import { api, type CommentRow, type NetworkInfo, type Platform } from '../lib/api'
 import { getRole } from '../lib/session'
 import { Logo, PLATFORM_META } from '../lib/platforms'
-import { Delta, EngagementChart, FollowersChart, Ring, Spark, pctChange, type Timeline } from '../components/charts'
+import { DeltaText, EngagementChart, FollowersArea, Ring, Spark, pctChange, type Timeline } from '../components/charts'
 import { CommentCard } from '../components/CommentCard'
 import { Markdown } from '../components/Markdown'
 import { METRIC_LABELS, POST_TYPE, PostCalendar, type PostItem } from '../components/PostCalendar'
@@ -112,33 +112,38 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
       : { t: net.configured ? 'Non connecté' : 'Non configuré', c: 'bg-slate-100 text-slate-600', d: 'bg-slate-400' }
 
   const fit = connected && statsOK && tab === 'apercu'
+  const TAB_ICON: Record<TabKey, ReactNode> = {
+    apercu: <BarChart3 size={17} />, publications: <FileText size={17} />, commentaires: <MessageSquare size={17} />,
+    calendrier: <CalendarDays size={17} />, conseils: <Lightbulb size={17} />, connexion: <Link2 size={17} />,
+  }
   return (
-    <div className={fit ? 'flex flex-col xl:h-[calc(100vh-8rem)] xl:min-h-[37rem]' : ''}>
+    <div className={fit ? `flex flex-col [@media(min-width:1280px)_and_(min-height:700px)]:h-[calc(100vh-7rem)]` : ''}>
       {/* En-tête */}
       <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="grid h-12 w-12 place-items-center rounded-xl bg-white shadow-sm ring-1 ring-slate-200"><Logo platform={platform} size={28} /></span>
+        <div className="flex items-center gap-4">
+          <span className="shrink-0"><Logo platform={platform} size={60} /></span>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{meta.label}</h1>
-            <p className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
-              {account?.avatar_url && <img src={account.avatar_url} alt="" className="h-5 w-5 rounded-full object-cover" referrerPolicy="no-referrer" />}
-              <span>{account?.account_name ?? 'Aucun compte connecté'}</span>
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${pill.c}`}><span className={`h-1.5 w-1.5 rounded-full ${pill.d}`} />{pill.t}</span>
+            <h1 className="text-3xl leading-tight font-bold tracking-tight text-slate-900">{meta.label}</h1>
+            <p className="flex flex-wrap items-center gap-2.5 text-sm text-slate-500">
+              {account?.avatar_url && <img src={account.avatar_url} alt="" className="h-7 w-7 rounded-full object-cover" referrerPolicy="no-referrer" />}
+              <span className="text-base">{account?.account_name ?? 'Aucun compte connecté'}</span>
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-sm font-medium ${pill.c}`}><span className={`h-2 w-2 rounded-full ${pill.d}`} />{pill.t}</span>
             </p>
           </div>
         </div>
         {connected && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {statsOK && (
               <label className="relative">
                 <span className="sr-only">Période</span>
-                <select value={days} onChange={(e) => setDays(Number(e.target.value) as 7 | 30 | 90)} className="appearance-none rounded-xl border border-slate-200 bg-white py-2 pr-8 pl-3.5 text-sm font-medium shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
+                <CalendarDays size={16} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-600" />
+                <select value={days} onChange={(e) => setDays(Number(e.target.value) as 7 | 30 | 90)} className="appearance-none rounded-full bg-white py-2.5 pr-9 pl-10 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
                   <option value={7}>7 derniers jours</option><option value={30}>30 derniers jours</option><option value={90}>90 derniers jours</option>
                 </select>
-                <ChevronDown size={15} className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-slate-500" />
+                <ChevronDown size={15} className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-slate-600" />
               </label>
             )}
-            <button onClick={refresh} disabled={refreshing} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium shadow-sm hover:bg-slate-50 disabled:opacity-60">
+            <button onClick={refresh} disabled={refreshing} className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm ring-1 ring-slate-100 hover:bg-slate-50 disabled:opacity-60">
               <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} /> Actualiser
             </button>
           </div>
@@ -160,12 +165,13 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
       {connected && (
         <>
           {/* Onglets */}
-          <div className="mb-3 flex shrink-0 gap-1 overflow-x-auto border-b border-slate-200" role="tablist" aria-label={`Sections ${meta.label}`}>
+          <div className="mb-3 flex shrink-0 gap-2 overflow-x-auto border-b border-slate-200" role="tablist" aria-label={`Sections ${meta.label}`}>
             {tabs.map((t) => (
               <button key={t.key} role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
-                className={`-mb-px inline-flex shrink-0 items-center gap-2 border-b-2 px-3.5 py-2.5 text-sm font-medium transition ${tab === t.key ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
+                className={`-mb-px inline-flex shrink-0 items-center gap-2 border-b-[3px] px-3.5 py-2.5 text-[15px] font-medium transition ${tab === t.key ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-600 hover:text-slate-900'}`}>
+                {TAB_ICON[t.key]}
                 {t.label}
-                {!!t.badge && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800">{t.badge}</span>}
+                {!!t.badge && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">{t.badge}</span>}
               </button>
             ))}
           </div>
@@ -185,88 +191,96 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
               const parts = ([['likes', 'J’aime / réactions'], ['comments', 'Commentaires'], ['shares', 'Partages'], ['saved', 'Enregistrements']] as const)
                 .flatMap(([k, l]) => (cur[k] === null ? [] : [{ l: l as string, v: cur[k] as number }]))
               const partsMax = Math.max(...parts.map((x) => x.v), 1)
-              const tile = 'rounded-2xl bg-white p-3.5 shadow-sm'
+              const tile = 'min-w-0 rounded-2xl bg-white p-3.5 shadow-sm ring-1 ring-slate-100'
               const rows = [...(posts.data ?? [])].sort((a, b) => +new Date(b.published_at) - +new Date(a.published_at)).slice(0, 3)
+              const followerSeries = stats.followers.series.map((s) => s.value)
+              const iconCls = 'grid h-11 w-11 shrink-0 place-items-center rounded-xl text-white shadow-sm'
+              const kpis = [
+                { l: 'Publications', v: fmtNum(cur.posts), d: pctChange(cur.posts, stats.previous.posts), s: buckets.map((b) => b.posts), vs: true, icon: <FileText size={20} />, ic: 'bg-blue-500', tx: 'text-blue-600', card: '', col: '#3b82f6' },
+                { l: 'Interactions', v: cur.posts ? fmtNum(inter(cur)) : '—', d: pctChange(inter(cur), inter(stats.previous)), s: buckets.map((b) => b.interactions), vs: true, icon: <Heart size={20} fill="currentColor" />, ic: 'bg-pink-500', tx: 'text-pink-600', card: 'bg-gradient-to-br from-pink-50 to-white', col: '#ec4899' },
+                { l: reachLike.label, v: fmtNum(reachLike.value), d: reachLike.value !== null && reachLike.prev !== null ? pctChange(reachLike.value, reachLike.prev) : null, s: [] as number[], vs: true, icon: <MessagesSquare size={20} />, ic: 'bg-violet-500', tx: 'text-violet-600', card: '', col: '#8b5cf6' },
+                { l: 'À traiter', v: commentsOK ? fmtNum(pending) : '—', d: null as number | null, s: [] as number[], vs: false, icon: <CalendarDays size={20} />, ic: 'bg-teal-500', tx: 'text-teal-600', card: '', col: '#14b8a6' },
+              ]
               return (
                 <div className="flex min-h-0 flex-1 flex-col gap-3">
                   {/* Rangée 1: abonnés + chiffres clés */}
-                  <div className="grid shrink-0 gap-3 lg:grid-cols-12">
-                    <section className={`${tile} flex items-center gap-4 lg:col-span-4`}>
+                  <div className="grid shrink-0 grid-cols-1 gap-3 min-[480px]:grid-cols-2 min-[1100px]:grid-cols-[minmax(0,1.5fr)_repeat(4,minmax(0,1fr))]">
+                    <section className={`${tile} flex items-center gap-3 min-[480px]:max-[1099px]:col-span-2`}>
+                      <span className={`${iconCls} bg-emerald-500`}><Users size={20} /></span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs text-slate-500">Abonnés</p>
-                        <p className="truncate text-3xl font-semibold tracking-tight text-slate-900">{fmtNum(stats.followers.latest)}</p>
-                        {stats.followers.latest !== null && stats.followers.first !== null && stats.followers.series.length > 1 && <Delta pct={pctChange(stats.followers.latest, stats.followers.first)} />}
+                        <p className="text-xs font-medium text-emerald-600">Abonnés</p>
+                        <p className="truncate text-2xl leading-tight font-semibold tracking-tight text-slate-900">{fmtNum(stats.followers.latest)}</p>
+                        <p className="flex min-h-6 items-center gap-2 text-xs text-slate-500">
+                          {stats.followers.latest !== null && stats.followers.first !== null && stats.followers.series.length > 1 && <DeltaText pct={pctChange(stats.followers.latest, stats.followers.first)} />}
+                          <Spark values={followerSeries} color="#10b981" className="h-6 w-14" />
+                        </p>
                       </div>
-                      <div className="flex flex-col items-center gap-1">
-                        <Ring pct={rate === null ? 0 : rate * 100} size={52}>{rate === null ? '—' : `${(rate * 100).toFixed(1)}%`}</Ring>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <Ring pct={rate === null ? 0 : rate * 100} size={48} stroke={6} color="#10b981">{rate === null ? '–' : `${(rate * 100).toFixed(1)}%`}</Ring>
                         <span className="text-[10px] text-slate-500">engagement</span>
                       </div>
                     </section>
-                    <div className="grid grid-cols-2 gap-3 lg:col-span-8 lg:grid-cols-4">
-                      {[
-                        { l: 'Publications', v: fmtNum(cur.posts), d: pctChange(cur.posts, stats.previous.posts), s: buckets.map((b) => b.posts) },
-                        { l: 'Interactions', v: cur.posts ? fmtNum(inter(cur)) : '—', d: pctChange(inter(cur), inter(stats.previous)), s: buckets.map((b) => b.interactions) },
-                        { l: reachLike.label, v: fmtNum(reachLike.value), d: reachLike.value !== null && reachLike.prev !== null ? pctChange(reachLike.value, reachLike.prev) : null, s: [] as number[] },
-                        { l: 'À traiter', v: commentsOK ? fmtNum(pending) : '—', d: null as number | null, s: [] as number[] },
-                      ].map((k) => (
-                        <section key={k.l} className={`${tile} flex flex-col justify-between`}>
-                          <div className="flex items-start justify-between gap-1">
-                            <p className="text-xs text-slate-500">{k.l}</p>
-                            <Spark values={k.s} className="h-6 w-14" />
+                    {kpis.map((k) => (
+                      <section key={k.l} className={`${tile} ${k.card} flex items-center gap-3`}>
+                        <span className={`${iconCls} ${k.ic}`}>{k.icon}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className={`truncate text-xs font-medium ${k.tx}`}>{k.l}</p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="truncate text-2xl leading-tight font-semibold tracking-tight text-slate-900">{k.v}</p>
+                            <Spark values={k.s} color={k.col} className="h-6 w-12 shrink-0" />
                           </div>
-                          <p className="mt-1 flex flex-wrap items-baseline gap-x-2 text-2xl font-semibold tracking-tight text-slate-900">{k.v}<span className="text-xs font-normal"><Delta pct={k.d} /></span></p>
-                        </section>
-                      ))}
-                    </div>
+                          <p className="flex min-h-6 items-center gap-1.5 whitespace-nowrap text-xs text-slate-500">{k.vs && <><DeltaText pct={k.d} /><span className="min-[1500px]:hidden">vs. {days} j</span><span className="hidden min-[1500px]:inline">vs. {days} jours</span></>}</p>
+                        </div>
+                      </section>
+                    ))}
                   </div>
 
-                  {/* Rangée 2: engagement + détail + commentaires / meilleures publications */}
-                  <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-12 xl:min-h-[12.5rem]">
-                    <section className={`${tile} flex min-h-0 min-w-0 flex-col overflow-hidden lg:col-span-12 xl:col-span-5`}>
+                  {/* Rangée 2: engagement + détail + commentaires */}
+                  <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:max-[1279px]:grid-cols-2 min-[1280px]:grid-cols-[minmax(0,1.9fr)_minmax(0,1fr)_minmax(0,1.1fr)]">
+                    <section className={`${tile} flex min-h-0 min-w-0 flex-col overflow-hidden md:max-[1279px]:col-span-2`}>
                       <div className="flex shrink-0 items-center justify-between gap-2">
-                        <div>
-                          <h2 className="text-base font-semibold text-slate-900">Engagement</h2>
-                          <p className="text-2xl font-semibold tracking-tight text-slate-900">{tl.data ? fmtNum(tl.data.total) : '—'}</p>
-                        </div>
+                        <h2 className="flex items-center gap-3 text-base font-semibold text-slate-900">
+                          <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-700 text-white"><TrendingUp size={17} /></span> Engagement
+                        </h2>
                         <div className="flex rounded-full bg-slate-100 p-0.5 text-xs" role="group" aria-label="Regroupement">
                           {([['week', 'Hebdo'], ['month', 'Mensuel']] as const).map(([k, l]) => (
-                            <button key={k} onClick={() => setBucket(k)} aria-pressed={bucket === k} className={`rounded-full px-3 py-1 font-medium ${bucket === k ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>{l}</button>
+                            <button key={k} onClick={() => setBucket(k)} aria-pressed={bucket === k} className={`rounded-full px-3.5 py-1.5 font-medium ${bucket === k ? 'bg-brand-700 text-white shadow-sm' : 'text-slate-500'}`}>{l}</button>
                           ))}
                         </div>
                       </div>
                       <div className="min-h-0 flex-1">
-                        {tl.error ? <ErrorBox error={tl.error} onRetry={tl.reload} /> : tl.data ? <EngagementChart data={tl.data} className="h-48 xl:h-full xl:min-h-[7rem]" /> : <Spinner />}
+                        {tl.error ? <ErrorBox error={tl.error} onRetry={tl.reload} /> : tl.data ? <EngagementChart data={tl.data} className={`h-56 [@media(min-width:1280px)_and_(min-height:700px)]:h-full [@media(min-width:1280px)_and_(min-height:700px)]:min-h-[6rem]`} /> : <Spinner />}
                       </div>
                     </section>
 
-                    <section className={`${tile} flex min-h-0 min-w-0 flex-col lg:col-span-6 xl:col-span-3`}>
-                      <h2 className="shrink-0 text-base font-semibold text-slate-900">Détail des interactions</h2>
+                    <section className={`${tile} flex min-h-0 min-w-0 flex-col`}>
+                      <h2 className="flex shrink-0 items-center gap-3 text-base font-semibold text-slate-900"><MessagesSquare size={22} className="text-brand-700" /> Détail des interactions</h2>
                       {parts.length === 0 ? <p className="mt-3 text-sm text-slate-400">Pas de détail fourni.</p> : (
-                        <ul className="mt-3 flex min-h-0 flex-1 flex-col justify-around gap-2 overflow-hidden">
+                        <ul className="mt-2 flex min-h-0 flex-1 flex-col justify-around gap-2 overflow-hidden">
                           {parts.map((x) => (
                             <li key={x.l}>
-                              <div className="flex items-baseline justify-between text-sm"><span className="text-slate-600">{x.l}</span><span className="font-semibold tabular-nums text-slate-900">{fmtNum(x.v)}</span></div>
-                              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-[#0b7a43] to-[#4fb883]" style={{ width: `${(x.v / partsMax) * 100}%` }} /></div>
+                              <div className="flex items-baseline justify-between text-sm"><span className="text-slate-700">{x.l}</span><span className="font-semibold tabular-nums text-slate-900">{fmtNum(x.v)}</span></div>
+                              <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-[#0b7a43] to-[#4fc08d]" style={{ width: `${Math.max((x.v / partsMax) * 100, x.v > 0 ? 4 : 0)}%` }} /></div>
                             </li>
                           ))}
                         </ul>
                       )}
                     </section>
 
-                    <section className={`${tile} flex min-h-0 min-w-0 flex-col lg:col-span-6 xl:col-span-4`}>
+                    <section className={`${tile} flex min-h-0 min-w-0 flex-col`}>
                       {commentsOK ? (
                         <>
                           <div className="flex shrink-0 items-center justify-between">
-                            <h2 className="text-base font-semibold text-slate-900">Commentaires</h2>
-                            <button onClick={() => setTab('commentaires')} className="text-xs font-medium text-brand-700 hover:underline">Voir tout</button>
+                            <h2 className="flex items-center gap-3 text-base font-semibold text-slate-900"><MessageCircle size={22} className="text-brand-700" /> Commentaires</h2>
+                            <button onClick={() => setTab('commentaires')} className="text-sm font-medium text-brand-700 hover:underline">Voir tout</button>
                           </div>
                           {cList.length === 0 ? <p className="mt-3 text-sm text-slate-400">Aucun commentaire pour le moment.</p> : (
-                            <div className="mt-3 flex flex-1 items-center justify-around">
-                              {([['À traiter', cPending, '#f59e0b'], ['Répondus', cReplied, '#0b7a43'], ['Traités', cDone, '#64748b']] as const).map(([l, n, col]) => (
-                                <div key={l} className="flex flex-col items-center gap-1">
-                                  <Ring pct={share(n)} size={56} color={col}>{share(n)}%</Ring>
-                                  <span className="text-xs text-slate-600">{l}</span>
-                                  <span className="text-sm font-semibold tabular-nums text-slate-900">{n}</span>
+                            <div className="mt-2 flex flex-1 items-center justify-around">
+                              {([['À traiter', cPending, '#f59e0b'], ['Répondus', cReplied, '#10b981'], ['Traités', cDone, '#64748b']] as const).map(([l, n, col]) => (
+                                <div key={l} className="flex flex-col items-center gap-0.5">
+                                  <Ring pct={share(n)} size={52} stroke={7} color={col}>{share(n)}%</Ring>
+                                  <span className="mt-1 text-xs text-slate-600">{l}</span>
+                                  <span className="text-base font-semibold tabular-nums text-slate-900">{n}</span>
                                 </div>
                               ))}
                             </div>
@@ -274,12 +288,12 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
                         </>
                       ) : (
                         <>
-                          <h2 className="flex shrink-0 items-center gap-2 text-base font-semibold text-slate-900"><Trophy size={15} className="text-amber-500" /> Meilleures publications</h2>
+                          <h2 className="flex shrink-0 items-center gap-3 text-base font-semibold text-slate-900"><Trophy size={20} className="text-amber-500" /> Meilleures publications</h2>
                           {stats.top.length === 0 ? <p className="mt-3 text-sm text-slate-400">Aucune publication sur la période.</p> : (
                             <ol className="mt-3 min-h-0 flex-1 space-y-2 overflow-hidden">
                               {stats.top.slice(0, 3).map((t, i) => (
                                 <li key={t.remote_id} className="flex items-center gap-2 text-sm">
-                                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-100 text-[11px] font-semibold text-slate-600">{i + 1}</span>
+                                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">{i + 1}</span>
                                   <span className="min-w-0 flex-1 truncate">{t.permalink ? <a className="hover:underline" href={t.permalink} target="_blank" rel="noreferrer">{t.caption || '(sans légende)'}</a> : t.caption || '(sans légende)'}</span>
                                   <span className="font-semibold tabular-nums text-slate-900">{fmtNum(t.interactions)}</span>
                                 </li>
@@ -292,27 +306,34 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
                   </div>
 
                   {/* Rangée 3: publications récentes + évolution des abonnés */}
-                  <div className="grid shrink-0 gap-3 lg:h-36 lg:grid-cols-12">
-                    <section className={`${tile} flex min-h-0 flex-col lg:col-span-7`}>
+                  <div className={`grid shrink-0 grid-cols-1 gap-3 min-[1100px]:grid-cols-[minmax(0,5fr)_minmax(0,4fr)] [@media(min-width:1280px)_and_(min-height:700px)]:h-44`}>
+                    <section className={`${tile} flex min-h-0 min-w-0 flex-col`}>
                       <div className="flex shrink-0 items-center justify-between">
-                        <h2 className="text-base font-semibold text-slate-900">Publications récentes</h2>
-                        <button onClick={() => setTab('publications')} className="text-xs font-medium text-brand-700 hover:underline">Voir tout</button>
+                        <h2 className="flex items-center gap-3 text-base font-semibold text-slate-900"><span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-700 text-white"><FileText size={16} /></span> Publications récentes</h2>
+                        <button onClick={() => setTab('publications')} className="text-sm font-medium text-brand-700 hover:underline">Voir tout</button>
                       </div>
                       {rows.length === 0 ? <p className="mt-3 text-sm text-slate-400">Aucune publication sur la période.</p> : (
-                        <ul className="mt-2 min-h-0 flex-1 space-y-0.5 overflow-hidden">
-                          {rows.map((p) => (
-                            <li key={p.remote_id} className="flex h-[22px] items-center gap-3 text-sm">
-                              <span className="min-w-0 flex-1 truncate font-medium text-slate-800">{p.permalink ? <a className="hover:underline" href={p.permalink} target="_blank" rel="noreferrer">{p.caption || '(sans légende)'}</a> : p.caption || '(sans légende)'}</span>
-                              <span className="hidden whitespace-nowrap text-xs text-slate-500 sm:inline">{format(new Date(p.published_at), 'd MMM', { locale: fr })}</span>
-                              <span className="w-14 text-right font-semibold tabular-nums text-slate-900">{fmtNum(p.interactions)}</span>
-                            </li>
-                          ))}
+                        <ul className="mt-1 min-h-0 flex-1 divide-y divide-slate-100 overflow-hidden">
+                          {rows.map((p) => {
+                            const views = p.metrics.views
+                            const hasViews = typeof views === 'number'
+                            return (
+                              <li key={p.remote_id} className="flex h-10 items-center gap-3 text-sm">
+                                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500" aria-hidden>{p.media_type && /VIDEO|REEL/i.test(p.media_type) ? <Video size={15} /> : <ImageIcon size={15} />}</span>
+                                <span className="min-w-0 flex-1 truncate font-medium text-slate-800">{p.permalink ? <a className="hover:underline" href={p.permalink} target="_blank" rel="noreferrer">{p.caption || '(sans légende)'}</a> : p.caption || '(sans légende)'}</span>
+                                <span className="hidden whitespace-nowrap text-xs text-slate-500 sm:inline">{format(new Date(p.published_at), 'd MMM', { locale: fr })}</span>
+                                <span title={hasViews ? 'Vues' : 'Interactions'} className="inline-flex w-14 items-center justify-end gap-1.5 font-semibold tabular-nums text-slate-900">
+                                  {hasViews ? <Eye size={15} className="text-brand-700" /> : <Heart size={14} className="text-brand-700" />}{fmtNum(hasViews ? views : p.interactions)}
+                                </span>
+                              </li>
+                            )
+                          })}
                         </ul>
                       )}
                     </section>
-                    <section className={`${tile} flex min-h-0 flex-col lg:col-span-5`}>
-                      <h2 className="shrink-0 text-base font-semibold text-slate-900">Évolution des abonnés</h2>
-                      <div className="min-h-0 flex-1 overflow-hidden"><FollowersChart series={stats.followers.series} className="h-20" /></div>
+                    <section className={`${tile} flex min-h-0 min-w-0 flex-col`}>
+                      <h2 className="flex shrink-0 items-center gap-3 text-base font-semibold text-slate-900"><TrendingUp size={20} className="text-brand-700" /> Évolution des abonnés</h2>
+                      <div className="mt-3 min-h-0 flex-1"><FollowersArea series={stats.followers.series} className={`h-36 [@media(min-width:1280px)_and_(min-height:700px)]:h-full`} /></div>
                     </section>
                   </div>
                 </div>

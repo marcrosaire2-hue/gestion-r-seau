@@ -79,9 +79,9 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-white md:flex">
       {/* Barre latérale (ordinateur) */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-slate-100 bg-[#fafbfb] px-4 py-5 md:flex">
+      <aside className="sticky top-0 hidden h-screen w-[17rem] shrink-0 flex-col border-r border-slate-100 bg-[#fafbfb] px-4 py-5 md:flex">
         <div className="mb-5 flex items-center gap-2.5 px-1">
-          <span className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-[#0b7a43] to-[#16a05a] text-white shadow-sm"><Share2 size={22} /></span>
+          <span className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-[#0b7a43] to-[#16a05a] text-white shadow-sm"><Share2 size={22} /></span>
           <span className="text-2xl font-bold tracking-tight text-slate-900">Boussole</span>
         </div>
 
@@ -107,7 +107,7 @@ export default function Layout() {
             if (!items.length) return null
             return (
               <div key={g.title}>
-                <p className="mb-1.5 px-3 text-[11px] font-medium tracking-wider text-slate-400">{g.title}</p>
+                <p className="mb-1.5 px-3 text-xs font-semibold tracking-wide text-slate-500">{g.title}</p>
                 <div className="space-y-0.5">
                   {items.map((i) => {
                     const n = badge(i)
@@ -118,14 +118,14 @@ export default function Layout() {
                         end={i.end}
                         onClick={() => setQ('')}
                         className={({ isActive }) =>
-                          `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                            isActive ? 'bg-brand-700 text-white shadow-md' : 'text-slate-700 hover:bg-slate-100'
+                          `relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition ${
+                            isActive ? 'bg-brand-600 text-white shadow-md before:absolute before:top-0 before:-left-4 before:h-full before:w-1 before:rounded-full before:bg-brand-600' : 'text-slate-700 hover:bg-slate-100'
                           }`
                         }
                       >
                         {i.platform ? <Logo platform={i.platform} size={22} /> : <NavIcon i={i} size={20} />}
                         <span className="flex-1">{i.label}</span>
-                        {i.platform && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${n === 0 ? 'bg-slate-100 text-slate-500' : i.platform === 'facebook' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-600'}`} title="Commentaires à traiter">{n}</span>}
+                        {i.platform && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${n === 0 ? 'bg-blue-50 text-slate-600' : i.platform === 'facebook' ? 'bg-blue-50 text-blue-700' : 'bg-rose-50 text-rose-600'}`} title="Commentaires à traiter">{n}</span>}
                       </NavLink>
                     )
                   })}
@@ -136,7 +136,7 @@ export default function Layout() {
           {q && !all.some(matches) && <p className="px-3 text-sm text-slate-400">Aucune page trouvée.</p>}
 
           <div>
-            <p className="mb-1.5 px-3 text-[11px] font-medium tracking-wider text-slate-400">GÉNÉRAL</p>
+            <p className="mb-1.5 px-3 text-xs font-semibold tracking-wide text-slate-500">GÉNÉRAL</p>
             <button
               onClick={() => setToken(null)}
               className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
@@ -187,7 +187,7 @@ export default function Layout() {
         </header>
 
         {/* Zone de contenu grise, angle supérieur gauche arrondi */}
-        <main className="min-w-0 flex-1 bg-[#f7f9f8] px-4 pt-6 pb-24 md:px-8 md:pb-10">
+        <main className="min-w-0 flex-1 bg-[#f7f9f8] px-4 pt-6 pb-24 md:px-8 md:pb-6">
           <div className="mx-auto max-w-6xl"><Outlet /></div>
         </main>
       </div>

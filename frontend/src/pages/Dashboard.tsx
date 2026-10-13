@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { Activity, BarChart3, CalendarDays, Check, ChevronDown, ChevronRight, Heart, MessageSquare, Network, RefreshCw, Trophy, Users } from 'lucide-react'
+import { Activity, BarChart3, CalendarDays, ChevronDown, ChevronRight, Eye, Heart, MessageSquare, RefreshCw, Share2, Sparkles, Trophy, Users } from 'lucide-react'
 import { api, type Platform } from '../lib/api'
 import { Logo } from '../lib/platforms'
 import { getUser } from '../lib/session'
@@ -49,7 +49,7 @@ function Kpi({ icon, tint, bg, title, value, note }: { icon: React.ReactNode; ti
       <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${tint}`}>{icon}</span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-xs font-medium text-slate-600">{title}</p>
-        <p className="truncate text-2xl leading-tight font-semibold tracking-tight text-slate-900">{value}</p>
+        <p className="truncate text-3xl leading-tight font-semibold tracking-tight text-slate-900">{value}</p>
         <p className="flex min-h-5 items-center gap-1.5 truncate text-xs text-slate-500">{note}</p>
       </div>
     </section>
@@ -98,10 +98,10 @@ export default function Dashboard() {
   const firstPending = d.networks.find((n) => (n.pendingComments ?? 0) > 0)?.platform
   const followers = (p: Platform) => ana.data?.platforms.find((x) => x.platform === p)?.followers.latest ?? null
   const today = format(new Date(), 'EEE d MMMM yyyy', { locale: fr })
-  const card = 'flex min-h-0 flex-col rounded-2xl bg-white p-4 shadow-sm'
+  const card = 'flex min-h-0 min-w-0 flex-col rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100'
 
   return (
-    <div className="flex flex-col gap-3 [@media(min-width:1280px)_and_(min-height:820px)]:h-[calc(100vh-8rem)] [@media(min-width:1280px)_and_(min-height:820px)]:overflow-hidden">
+    <div className="flex flex-col gap-3 [@media(min-width:1180px)_and_(min-height:640px)]:h-[calc(100vh-7rem)] [@media(min-width:1180px)_and_(min-height:640px)]:overflow-hidden">
       {/* En-tête */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
         <div>
@@ -130,13 +130,13 @@ export default function Dashboard() {
       )}
 
       {/* Chiffres clés */}
-      <div className="grid shrink-0 grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-4">
-        <Kpi icon={<Users size={22} />} tint="bg-emerald-100 text-emerald-700" bg="to-emerald-50/60" title="Abonnés" value={fmtNum(totalFollowers)} />
-        <Kpi icon={<BarChart3 size={22} />} tint="bg-sky-100 text-sky-600" bg="to-sky-50/60" title="Publications" value={stats.length ? fmtNum(posts) : '—'} note={stats.length ? <>{postsDelta !== null && <Delta pct={postsDelta} />}<span>vs. {days} jours</span></> : null} />
-        <Kpi icon={<Heart size={22} />} tint="bg-pink-100 text-pink-600" bg="to-pink-50/60" title="Interactions" value={stats.length ? fmtNum(cur) : '—'} note={stats.length ? <>{delta !== null && <Delta pct={delta} />}<span>vs. {days} jours</span></> : null} />
+      <div className="grid shrink-0 grid-cols-1 gap-3 min-[480px]:grid-cols-2 min-[1180px]:grid-cols-4">
+        <Kpi icon={<Users size={22} />} tint="bg-emerald-100 text-emerald-700" bg="to-emerald-50/40" title="Abonnés" value={fmtNum(totalFollowers)} />
+        <Kpi icon={<BarChart3 size={22} />} tint="bg-sky-100 text-sky-600" bg="to-sky-50/40" title="Publications" value={stats.length ? fmtNum(posts) : '—'} note={stats.length ? <>{postsDelta !== null && <Delta pct={postsDelta} />}<span>vs. {days} jours</span></> : null} />
+        <Kpi icon={<Heart size={22} />} tint="bg-pink-100 text-pink-600" bg="to-pink-50/50" title="Interactions" value={stats.length ? fmtNum(cur) : '—'} note={stats.length ? <>{delta !== null && <Delta pct={delta} />}<span>vs. {days} jours</span></> : null} />
         <Kpi
           icon={<MessageSquare size={22} />}
-          tint="bg-violet-100 text-violet-600" bg="to-violet-50/60"
+          tint="bg-violet-100 text-violet-600" bg="to-violet-50/50"
           title="Commentaires à traiter"
           value={fmtNum(d.totals.pendingComments)}
           note={<Link to={firstPending ? `/${firstPending}?tab=commentaires` : firstConnected ? `/${firstConnected}?tab=commentaires` : '/facebook'} className="inline-flex items-center gap-1.5 font-medium text-brand-700 hover:underline"><span className="h-2 w-2 rounded-full bg-emerald-500" />Ouvert</Link>}
@@ -144,11 +144,11 @@ export default function Dashboard() {
       </div>
 
       {/* Graphique + réseaux */}
-      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-3 [@media(min-width:1280px)_and_(min-height:820px)]:min-h-[16.5rem]">
-        <section className={`${card} lg:col-span-2`}>
+      <div className="grid min-h-0 flex-1 gap-3 min-[1180px]:grid-cols-[3fr_2fr] min-[1400px]:grid-cols-[2fr_1fr] [@media(min-width:1180px)_and_(min-height:640px)]:min-h-0">
+        <section className={card}>
           <div className="flex shrink-0 items-center justify-between gap-2">
             <div className="flex items-center gap-3">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-700 text-white"><Activity size={16} /></span>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-700 text-white"><Sparkles size={16} /></span>
               <div>
                 <h2 className="text-base leading-tight font-semibold text-slate-900">Engagement</h2>
                 <p className="text-xs text-slate-500">Évolution de l’engagement sur vos publications</p>
@@ -161,12 +161,12 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="min-h-0 flex-1">
-            {tl.error ? <ErrorBox error={tl.error} onRetry={tl.reload} /> : tl.data ? <EngagementChart data={tl.data} className="h-64 [@media(min-width:1280px)_and_(min-height:820px)]:h-full" /> : <Spinner />}
+            {tl.error ? <ErrorBox error={tl.error} onRetry={tl.reload} /> : tl.data ? <EngagementChart data={tl.data} className="h-64 [@media(min-width:1180px)_and_(min-height:640px)]:h-full" /> : <Spinner />}
           </div>
         </section>
 
         <section className={card}>
-          <h2 className="flex shrink-0 items-center gap-3 text-base font-semibold text-slate-900"><Network size={20} className="text-brand-700" /> Réseaux</h2>
+          <h2 className="flex shrink-0 items-center gap-3 text-base font-semibold text-slate-900"><Share2 size={20} className="text-brand-700" /> Réseaux</h2>
           <ul className="mt-2 flex min-h-0 flex-1 flex-col justify-between divide-y divide-slate-100 overflow-hidden">
             {d.networks.map((n) => {
               const st = n.status === 'connected' ? { t: 'Connecté', c: 'bg-emerald-500', x: 'text-emerald-700' } : n.status === 'expired' ? { t: 'Expiré', c: 'bg-amber-500', x: 'text-amber-700' } : { t: n.configured ? 'Non connecté' : 'Non configuré', c: 'bg-red-500', x: 'text-red-600' }
@@ -175,8 +175,8 @@ export default function Dashboard() {
                   <Link to={`/${n.platform}`} className="flex w-full items-center gap-2.5 rounded-xl px-1 py-1 hover:bg-slate-50" title={n.lastError ?? n.account ?? undefined}>
                     <Logo platform={n.platform} size={22} />
                     <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">{n.label}</span>
-                    <span className="w-12 text-right text-sm font-semibold tabular-nums text-slate-900">{n.status === 'connected' ? fmtNum(followers(n.platform)) : '—'}</span>
-                    <span className={`inline-flex w-28 items-center gap-1.5 text-xs ${st.x}`}><span className={`h-2 w-2 shrink-0 rounded-full ${st.c}`} />{st.t}</span>
+                    <span className="min-w-10 shrink-0 text-right text-sm font-semibold tabular-nums text-slate-900">{n.status === 'connected' ? fmtNum(followers(n.platform)) : '—'}</span>
+                    <span className={`inline-flex shrink-0 items-center gap-1.5 text-xs ${st.x}`}><span className={`h-2 w-2 shrink-0 rounded-full ${st.c}`} />{st.t}</span>
                     <ChevronRight size={14} className="shrink-0 text-slate-400" />
                   </Link>
                 </li>
@@ -187,16 +187,17 @@ export default function Dashboard() {
       </div>
 
       {/* Publications et activités */}
-      <div className="grid shrink-0 gap-3 lg:grid-cols-[2fr_3fr] [@media(min-width:1280px)_and_(min-height:820px)]:h-40">
+      <div className="grid shrink-0 gap-3 min-[1180px]:grid-cols-[5fr_7fr] [@media(min-width:1180px)_and_(min-height:640px)]:h-[10.5rem]">
         <section className={card}>
           <h2 className="flex shrink-0 items-center gap-2 text-base font-semibold text-slate-900"><Trophy size={15} className="text-amber-500" /> Meilleures publications</h2>
           {d.top.length === 0 ? (
             <p className="mt-3 text-sm text-slate-400">Pas encore de statistiques.</p>
           ) : (
-            <ol className="mt-2 min-h-0 flex-1 space-y-0.5 overflow-hidden">
+            <ol className="mt-1 divide-y divide-slate-100">
               {d.top.slice(0, 3).map((t, i) => (
-                <li key={i} className="flex h-7 items-center gap-2 text-sm">
+                <li key={i} className="flex h-8 items-center gap-2 text-sm">
                   <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">{i + 1}</span>
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-slate-100"><Logo platform={t.platform} size={16} /></span>
                   <PlatformTag platform={t.platform} />
                   <span className="min-w-0 flex-1 truncate">{t.permalink ? <a className="hover:underline" href={t.permalink} target="_blank" rel="noreferrer">{t.caption || '(sans légende)'}</a> : t.caption || '(sans légende)'}</span>
                   <span title="Interactions" className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-emerald-700"><Heart size={12} />{fmtNum(t.interactions)}</span>
@@ -206,21 +207,21 @@ export default function Dashboard() {
           )}
         </section>
 
-        <section className={`${card} lg:col-span-2`}>
+        <section className={card}>
           <h2 className="flex shrink-0 items-center gap-2 text-base font-semibold text-slate-900"><Activity size={15} className="text-brand-700" /> Activités récentes</h2>
           {d.activity.length === 0 ? (
             <p className="mt-3 text-sm text-slate-400">Aucune activité.</p>
           ) : (
-            <ul className="mt-2 min-h-0 flex-1 space-y-0.5 overflow-hidden">
+            <ul className="mt-1 divide-y divide-slate-100">
               {d.activity.slice(0, 3).map((a) => {
                 const t = tone(a.action)
                 const when = new Date(a.created_at)
                 return (
-                  <li key={a.id} className="flex h-7 items-center gap-3 text-sm">
+                  <li key={a.id} className="flex h-8 items-center gap-3 text-sm">
                     {a.platform && <Logo platform={a.platform} size={20} />}
                     <span className="min-w-0 flex-1 truncate font-medium text-slate-800" title={typeof a.detail?.error === 'string' ? a.detail.error : undefined}>{ACTION[a.action] ?? a.action}</span>
                     <span className="hidden whitespace-nowrap text-xs text-slate-500 sm:inline">{format(when, 'd MMM HH:mm', { locale: fr })}</span>
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${t.pill} ${t.text}`}>{t.label === 'Terminé' ? <Check size={12} /> : <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} />}{t.label}</span>
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${t.pill} ${t.text}`}>{t.label === 'Terminé' ? <Eye size={12} /> : <span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} />}{t.label}</span>
                   </li>
                 )
               })}
