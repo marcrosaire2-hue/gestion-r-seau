@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { Activity, ArrowRight, BarChart3, ChevronDown, Filter, Heart, MessageSquare, RefreshCw, Search, Trophy } from 'lucide-react'
+import { Activity, BarChart3, CalendarDays, ChevronDown, Heart, MessageSquare, RefreshCw, Trophy, Users } from 'lucide-react'
 import { api, type Platform } from '../lib/api'
-import { Logo, PLATFORM_LIST, PLATFORM_META } from '../lib/platforms'
+import { Logo } from '../lib/platforms'
+import { getUser } from '../lib/session'
 import { Delta, EngagementChart, pctChange, type Timeline } from '../components/charts'
-import { Empty, ErrorBox, PlatformTag, Spinner, fmtNum, useFetch, useToast } from '../components/ui'
+import { ErrorBox, PlatformTag, Spinner, fmtNum, useFetch, useToast } from '../components/ui'
 
 interface Net {
   platform: Platform; label: string; configured: boolean; status: 'connected' | 'expired' | 'disconnected'
@@ -32,48 +33,35 @@ const ACTION: Record<string, string> = {
   'connection.connected': 'Compte connecté', 'connection.disconnected': 'Compte déconnecté', 'connection.failed': 'Connexion échouée',
   'media.uploaded': 'Média téléversé', 'auth.registered': 'Compte créé',
 }
-function tone(action: string): { label: string; dot: string; text: string } {
-  if (action.endsWith('failed')) return { label: 'Échec', dot: 'bg-red-500', text: 'text-red-600' }
-  if (action === 'post.processing' || action === 'post.publish_requested' || action === 'post.retry') return { label: 'En cours', dot: 'bg-amber-500', text: 'text-amber-600' }
-  if (/published|replied|done|connected$/.test(action)) return { label: 'Terminé', dot: 'bg-emerald-500', text: 'text-emerald-700' }
-  return { label: 'Enregistré', dot: 'bg-slate-400', text: 'text-slate-500' }
+function tone(action: string): { label: string; dot: string; text: string; pill: string } {
+  if (action.endsWith('failed')) return { label: 'Échec', dot: 'bg-red-500', text: 'text-red-600', pill: 'bg-red-50' }
+  if (action === 'post.processing' || action === 'post.publish_requested' || action === 'post.retry') return { label: 'En cours', dot: 'bg-amber-500', text: 'text-amber-700', pill: 'bg-amber-50' }
+  if (/published|replied|done|connected$/.test(action)) return { label: 'Terminé', dot: 'bg-emerald-500', text: 'text-emerald-700', pill: 'bg-emerald-50' }
+  return { label: 'Enregistré', dot: 'bg-slate-400', text: 'text-slate-600', pill: 'bg-slate-100' }
 }
 
 const inter = (p: Period) => (p.likes ?? 0) + (p.comments ?? 0) + (p.shares ?? 0) + (p.saved ?? 0)
 
-function SummaryCard({ icon, title, subtitle, value, pill, footer, to, hero }: {
-  icon: React.ReactNode; title: string; subtitle: string; value: string; pill?: React.ReactNode; footer: string; to: string; hero?: boolean
-}) {
+/** Chiffre clé, sur une seule ligne compacte. */
+function Kpi({ icon, title, value, note }: { icon: React.ReactNode; title: string; value: string; note?: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className={`relative p-5 ${hero ? 'bg-gradient-to-br from-[#0a6b3d] via-[#0d8049] to-[#14a05a] text-white' : ''}`}>
-        {hero && <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_20%,rgba(255,255,255,.14),transparent_45%)]" />}
-        <div className="relative flex items-start gap-3">
-          <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${hero ? 'bg-white text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>{icon}</span>
-          <div className="min-w-0">
-            <p className="truncate font-semibold">{title}</p>
-            <p className={`truncate text-sm ${hero ? 'text-white/75' : 'text-slate-500'}`}>{subtitle}</p>
-          </div>
-        </div>
-        <div className="relative mt-5 flex items-center gap-3">
-          <span className="text-3xl font-semibold tracking-tight">{value}</span>
-          {pill}
-        </div>
+    <section className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-brand-700">{icon}</span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs text-slate-500">{title}</p>
+        <p className="flex items-baseline gap-2 truncate text-xl font-semibold tracking-tight text-slate-900">{value}<span className="text-xs font-normal text-slate-500">{note}</span></p>
       </div>
-      <Link to={to} className="flex items-center justify-between border-t border-slate-200 bg-white px-5 py-3 text-sm text-slate-700 hover:bg-slate-50">
-        {footer} <ArrowRight size={16} />
-      </Link>
-    </div>
+    </section>
   )
 }
 
+/** Tableau de bord sur une seule page (sans défilement sur ordinateur): l'essentiel, rien de plus. */
 export default function Dashboard() {
   const toast = useToast()
+  const user = getUser() || 'Utilisateur'
   const [days, setDays] = useState(30)
   const [bucket, setBucket] = useState<'week' | 'month'>('week')
   const [refreshing, setRefreshing] = useState(false)
-  const [search, setSearch] = useState('')
-  const [net, setNet] = useState<Platform | ''>('')
 
   const dash = useFetch(() => api<Dash>('/insights/dashboard'))
   const ana = useFetch(() => api<Analytics>(`/insights?days=${days}`), [days])
@@ -96,14 +84,8 @@ export default function Dashboard() {
   const prev = stats.reduce((a, p) => a + inter(p.previous), 0)
   const posts = stats.reduce((a, p) => a + p.current.posts, 0)
   const delta = prev > 0 ? pctChange(cur, prev) : null // pas de pourcentage sans base de comparaison
-
-  const rows = useMemo(() => {
-    const s = search.trim().toLowerCase()
-    return (dash.data?.activity ?? []).filter((a) =>
-      (!net || a.platform === net) &&
-      (!s || (ACTION[a.action] ?? a.action).toLowerCase().includes(s) || String(a.detail?.error ?? '').toLowerCase().includes(s)),
-    )
-  }, [dash.data, search, net])
+  const followerList = stats.map((p) => p.followers.latest).filter((n): n is number => typeof n === 'number')
+  const totalFollowers = followerList.length ? followerList.reduce((a, b) => a + b, 0) : null
 
   if (dash.loading && !dash.data) return <Spinner />
   if (dash.error || !dash.data) return <ErrorBox error={dash.error ?? 'Données indisponibles'} onRetry={dash.reload} />
@@ -112,176 +94,126 @@ export default function Dashboard() {
   const firstConnected = connected[0]?.platform
   const firstPending = d.networks.find((n) => (n.pendingComments ?? 0) > 0)?.platform
   const followers = (p: Platform) => ana.data?.platforms.find((x) => x.platform === p)?.followers.latest ?? null
+  const today = format(new Date(), 'EEE d MMMM yyyy', { locale: fr })
+  const card = 'flex min-h-0 flex-col rounded-2xl bg-white p-4 shadow-sm'
 
   return (
-    <>
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Vue d’ensemble</h1>
-        </div>
-        <div className="flex gap-2">
+    <div className="flex flex-col gap-3 lg:h-[calc(100vh-8rem)] lg:min-h-[34rem] lg:overflow-hidden">
+      {/* En-tête */}
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">Bienvenue <span className="capitalize">{user}</span></h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 shadow-sm"><CalendarDays size={14} className="text-slate-500" /> <span className="first-letter:capitalize">{today}</span></span>
           <label className="relative">
             <span className="sr-only">Période</span>
-            <select value={days} onChange={(e) => setDays(Number(e.target.value))} className="appearance-none rounded-xl border border-slate-200 bg-white py-2 pr-8 pl-3.5 text-sm font-medium shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
-              <option value={7}>7 derniers jours</option><option value={30}>30 derniers jours</option><option value={90}>90 derniers jours</option>
+            <select value={days} onChange={(e) => setDays(Number(e.target.value))} className="appearance-none rounded-full bg-white py-1.5 pr-8 pl-3.5 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
+              <option value={7}>7 jours</option><option value={30}>30 jours</option><option value={90}>90 jours</option>
             </select>
-            <ChevronDown size={15} className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-slate-500" />
+            <ChevronDown size={14} className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-slate-500" />
           </label>
-          <button onClick={refresh} disabled={refreshing} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium shadow-sm hover:bg-slate-50 disabled:opacity-60">
-            <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} /> Actualiser
+          <button onClick={refresh} disabled={refreshing} className="inline-flex items-center gap-2 rounded-full bg-neutral-900 px-3.5 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-neutral-700 disabled:opacity-60">
+            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} /> Actualiser
           </button>
         </div>
       </div>
 
       {connected.length === 0 && (
-        <div className="mb-5 rounded-xl border border-brand-100 bg-brand-50 p-4 text-sm text-brand-700">
+        <div className="shrink-0 rounded-xl border border-brand-100 bg-brand-50 px-4 py-2 text-sm text-brand-700">
           Aucun réseau connecté. <Link to="/facebook" className="font-semibold underline">Connecter un réseau</Link>
         </div>
       )}
 
-      {/* Cartes de synthèse */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <SummaryCard
-          hero
-          icon={<Heart size={20} />}
-          title="Interactions"
-          subtitle={`${days} derniers jours`}
-          value={stats.length ? fmtNum(cur) : '—'}
-          pill={stats.length ? <Delta pct={delta} onDark /> : null}
-          footer="Voir le détail par réseau"
-          to={firstConnected ? `/${firstConnected}` : '/facebook'}
-        />
-        <SummaryCard
-          icon={<BarChart3 size={20} />}
-          title="Publications suivies"
-          subtitle={`${days} derniers jours`}
-          value={stats.length ? fmtNum(posts) : '—'}
-          footer="Voir les publications"
-          to={firstConnected ? `/${firstConnected}?tab=publications` : '/facebook'}
-        />
-        <SummaryCard
-          icon={<MessageSquare size={20} />}
+      {/* Chiffres clés */}
+      <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi icon={<Users size={18} />} title="Abonnés" value={fmtNum(totalFollowers)} />
+        <Kpi icon={<BarChart3 size={18} />} title={`Publications · ${days} j`} value={stats.length ? fmtNum(posts) : '—'} />
+        <Kpi icon={<Heart size={18} />} title="Interactions" value={stats.length ? fmtNum(cur) : '—'} note={stats.length ? <Delta pct={delta} /> : null} />
+        <Kpi
+          icon={<MessageSquare size={18} />}
           title="Commentaires à traiter"
-          subtitle="Tous réseaux"
           value={fmtNum(d.totals.pendingComments)}
-          footer="Ouvrir les commentaires"
-          to={firstPending ? `/${firstPending}?tab=commentaires` : firstConnected ? `/${firstConnected}?tab=commentaires` : '/facebook'}
+          note={<Link to={firstPending ? `/${firstPending}?tab=commentaires` : firstConnected ? `/${firstConnected}?tab=commentaires` : '/facebook'} className="font-medium text-brand-700 hover:underline">Ouvrir</Link>}
         />
       </div>
 
-      {/* Réseaux + graphique */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-5">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
-          <div>
-            <h2 className="text-lg font-semibold">Réseaux</h2>
-            <p className="text-sm text-slate-500">{connected.length} connecté{connected.length > 1 ? 's' : ''} sur {d.networks.length}</p>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            {d.networks.map((n) => {
-              const st = n.status === 'connected' ? { t: 'Connecté', c: 'text-emerald-600' } : n.status === 'expired' ? { t: 'Expiré', c: 'text-amber-600' } : { t: n.configured ? 'Non connecté' : 'Non configuré', c: 'text-red-500' }
-              return (
-                <Link key={n.platform} to={`/${n.platform}`} className="rounded-xl bg-slate-50 p-3.5 transition hover:bg-slate-100" title={n.lastError ?? n.account ?? undefined}>
-                  <div className="flex items-center gap-2 text-sm font-medium"><Logo platform={n.platform} size={20} /> {n.label}</div>
-                  <p className="mt-3 text-xl font-semibold tracking-tight">{n.status === 'connected' ? fmtNum(followers(n.platform)) : '—'}</p>
-                  <p className="text-[11px] text-slate-500">abonnés</p>
-                  <p className="mt-1.5 truncate text-[11px] text-slate-500">
-                    {n.status === 'connected' ? `${fmtNum(n.remotePosts)} publication(s) · ${n.pendingComments === null ? 'commentaires N/D' : `${n.pendingComments} commentaire(s)`}` : n.commentsNote ? 'Voir les limites' : 'À connecter'}
-                  </p>
-                  <p className={`mt-1 text-[11px] font-medium ${st.c}`}>{st.t}</p>
-                </Link>
-              )
-            })}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-3">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <p className="text-sm text-slate-500">Engagement</p>
-              <p className="text-3xl font-semibold tracking-tight">{tl.data ? fmtNum(tl.data.total) : '—'}</p>
-            </div>
-            <div className="flex rounded-full border border-slate-200 p-0.5 text-sm" role="group" aria-label="Regroupement">
+      {/* Graphique + réseaux */}
+      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-3">
+        <section className={`${card} lg:col-span-2`}>
+          <div className="flex shrink-0 items-center justify-between gap-2">
+            <h2 className="text-base font-semibold text-slate-900">Engagement</h2>
+            <div className="flex rounded-full bg-slate-100 p-0.5 text-xs" role="group" aria-label="Regroupement">
               {([['week', 'Hebdo'], ['month', 'Mensuel']] as const).map(([k, l]) => (
-                <button key={k} onClick={() => setBucket(k)} aria-pressed={bucket === k} className={`rounded-full px-3.5 py-1 font-medium ${bucket === k ? 'bg-brand-600 text-white' : 'text-slate-600'}`}>{l}</button>
+                <button key={k} onClick={() => setBucket(k)} aria-pressed={bucket === k} className={`rounded-full px-3 py-1 font-medium ${bucket === k ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>{l}</button>
               ))}
             </div>
           </div>
-          {tl.error ? <div className="mt-4"><ErrorBox error={tl.error} onRetry={tl.reload} /></div> : tl.data ? <EngagementChart data={tl.data} /> : <Spinner />}
+          <div className="min-h-0 flex-1">
+            {tl.error ? <ErrorBox error={tl.error} onRetry={tl.reload} /> : tl.data ? <EngagementChart data={tl.data} className="h-60 lg:h-full" /> : <Spinner />}
+          </div>
+        </section>
+
+        <section className={card}>
+          <h2 className="shrink-0 text-base font-semibold text-slate-900">Réseaux</h2>
+          <ul className="mt-2 flex min-h-0 flex-1 flex-col justify-between gap-1 overflow-hidden">
+            {d.networks.map((n) => {
+              const st = n.status === 'connected' ? { t: 'Connecté', c: 'bg-emerald-500' } : n.status === 'expired' ? { t: 'Expiré', c: 'bg-amber-500' } : { t: n.configured ? 'Non connecté' : 'Non configuré', c: 'bg-red-400' }
+              return (
+                <li key={n.platform}>
+                  <Link to={`/${n.platform}`} className="flex items-center gap-2.5 rounded-xl px-2 py-1 hover:bg-slate-50" title={n.lastError ?? n.account ?? undefined}>
+                    <Logo platform={n.platform} size={18} />
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">{n.label}</span>
+                    <span className="text-sm font-semibold tabular-nums text-slate-900">{n.status === 'connected' ? fmtNum(followers(n.platform)) : '—'}</span>
+                    <span className="inline-flex w-24 items-center gap-1.5 text-[11px] text-slate-500"><span className={`h-1.5 w-1.5 shrink-0 rounded-full ${st.c}`} />{st.t}</span>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
         </section>
       </div>
 
-      {/* Activités + meilleures publications */}
-      <div className="mt-4 grid gap-4 xl:grid-cols-3">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Activités récentes</h2>
-            <div className="flex gap-2">
-              <label className="relative">
-                <span className="sr-only">Rechercher une activité</span>
-                <Search size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-400" />
-                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher" className="w-40 rounded-xl border border-slate-200 py-2 pr-3 pl-9 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 sm:w-52" />
-              </label>
-              <label className="relative">
-                <span className="sr-only">Filtrer par réseau</span>
-                <Filter size={14} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-500" />
-                <select value={net} onChange={(e) => setNet(e.target.value as Platform | '')} className="appearance-none rounded-xl border border-slate-200 py-2 pr-3 pl-8 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
-                  <option value="">Filtrer</option>
-                  {PLATFORM_LIST.map((p) => <option key={p} value={p}>{PLATFORM_META[p].label}</option>)}
-                </select>
-              </label>
-            </div>
-          </div>
-          {rows.length === 0 ? (
-            <Empty icon={<Activity size={32} />} title={d.activity.length ? 'Aucun résultat' : 'Aucune activité'} />
-          ) : (
-            <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full min-w-[34rem] text-left text-sm">
-                <thead className="bg-slate-50 text-xs text-slate-500">
-                  <tr><th className="px-4 py-2.5 font-medium">Activité</th><th className="px-4 py-2.5 font-medium">Réseau</th><th className="px-4 py-2.5 font-medium">Date</th><th className="px-4 py-2.5 font-medium">Heure</th><th className="px-4 py-2.5 font-medium">Statut</th></tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {rows.map((a) => {
-                    const t = tone(a.action)
-                    const when = new Date(a.created_at)
-                    return (
-                      <tr key={a.id} className="hover:bg-slate-50/60">
-                        <td className="px-4 py-3">
-                          <p className="font-medium text-slate-800">{ACTION[a.action] ?? a.action}</p>
-                          {typeof a.detail?.error === 'string' && <p className="max-w-xs truncate text-xs text-red-600" title={a.detail.error}>{a.detail.error}</p>}
-                        </td>
-                        <td className="px-4 py-3">{a.platform ? <PlatformTag platform={a.platform} /> : <span className="text-slate-300">—</span>}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-slate-600">{format(when, 'd MMM yyyy', { locale: fr })}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-slate-600">{format(when, 'HH:mm')}</td>
-                        <td className="px-4 py-3"><span className={`inline-flex items-center gap-1.5 text-xs font-medium ${t.text}`}><span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} />{t.label}</span></td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold"><Trophy size={18} className="text-amber-500" /> Meilleures publications</h2>
+      {/* Publications et activités */}
+      <div className="grid shrink-0 gap-3 lg:h-36 lg:grid-cols-3">
+        <section className={card}>
+          <h2 className="flex shrink-0 items-center gap-2 text-base font-semibold text-slate-900"><Trophy size={15} className="text-amber-500" /> Meilleures publications</h2>
           {d.top.length === 0 ? (
-            <Empty icon={<Trophy size={32} />} title="Pas encore de statistiques" />
+            <p className="mt-3 text-sm text-slate-400">Pas encore de statistiques.</p>
           ) : (
-            <ol className="divide-y divide-slate-100">
-              {d.top.map((t, i) => (
-                <li key={i} className="flex items-center gap-3 py-3 text-sm">
-                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-medium text-slate-600">{i + 1}</span>
-                  <div className="min-w-0 flex-1">
-                    <PlatformTag platform={t.platform} />
-                    <p className="mt-1 truncate">{t.permalink ? <a className="hover:underline" href={t.permalink} target="_blank" rel="noreferrer">{t.caption || '(sans légende)'}</a> : t.caption || '(sans légende)'}</p>
-                  </div>
-                  <span className="text-right"><span className="block font-semibold">{fmtNum(t.interactions)}</span><span className="text-[10px] text-slate-400">interactions</span></span>
+            <ol className="mt-2 min-h-0 flex-1 space-y-0.5 overflow-hidden">
+              {d.top.slice(0, 3).map((t, i) => (
+                <li key={i} className="flex h-6 items-center gap-2 text-sm">
+                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-100 text-[11px] font-semibold text-slate-600">{i + 1}</span>
+                  <PlatformTag platform={t.platform} />
+                  <span className="min-w-0 flex-1 truncate">{t.permalink ? <a className="hover:underline" href={t.permalink} target="_blank" rel="noreferrer">{t.caption || '(sans légende)'}</a> : t.caption || '(sans légende)'}</span>
+                  <span className="font-semibold tabular-nums text-slate-900">{fmtNum(t.interactions)}</span>
                 </li>
               ))}
             </ol>
           )}
         </section>
+
+        <section className={`${card} lg:col-span-2`}>
+          <h2 className="flex shrink-0 items-center gap-2 text-base font-semibold text-slate-900"><Activity size={15} className="text-brand-700" /> Activités récentes</h2>
+          {d.activity.length === 0 ? (
+            <p className="mt-3 text-sm text-slate-400">Aucune activité.</p>
+          ) : (
+            <ul className="mt-2 min-h-0 flex-1 space-y-0.5 overflow-hidden">
+              {d.activity.slice(0, 3).map((a) => {
+                const t = tone(a.action)
+                const when = new Date(a.created_at)
+                return (
+                  <li key={a.id} className="flex h-6 items-center gap-3 text-sm">
+                    <span className="min-w-0 flex-1 truncate font-medium text-slate-800" title={typeof a.detail?.error === 'string' ? a.detail.error : undefined}>{ACTION[a.action] ?? a.action}</span>
+                    {a.platform && <PlatformTag platform={a.platform} />}
+                    <span className="hidden whitespace-nowrap text-xs text-slate-500 sm:inline">{format(when, 'd MMM HH:mm', { locale: fr })}</span>
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${t.pill} ${t.text}`}><span className={`h-1.5 w-1.5 rounded-full ${t.dot}`} />{t.label}</span>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </section>
       </div>
-    </>
+    </div>
   )
 }

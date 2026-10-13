@@ -60,13 +60,13 @@ function niceMax(v: number) {
 }
 
 /** Histogramme des interactions par période, avec infobulle au survol ou au focus. */
-export function EngagementChart({ data }: { data: Timeline }) {
+export function EngagementChart({ data, className = 'h-64' }: { data: Timeline; className?: string }) {
   const [hover, setHover] = useState<number | null>(null)
   const max = niceMax(Math.max(0, ...data.buckets.map((b) => b.interactions)))
   const ticks = [1, 0.75, 0.5, 0.25, 0].map((t) => Math.round(max * t))
   const empty = data.buckets.every((b) => b.posts === 0)
   return (
-    <div className="relative mt-4 flex h-64 gap-3">
+    <div className={`relative mt-3 flex gap-3 ${className}`}>
       <div className="flex flex-col justify-between pb-6 text-xs text-slate-500" aria-hidden>
         {ticks.map((t) => <span key={t}>{fmtNum(t)}</span>)}
       </div>
