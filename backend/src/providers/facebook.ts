@@ -1,5 +1,6 @@
 import { env } from '../env';
 import { ApiError, form, httpJson } from '../http';
+import { fetchAll, wantsComments } from './paging';
 import type { AccountOption, Provider, Ctx, MediaItem, RemotePost, RemoteComment } from './types';
 
 const V = 'v23.0';
@@ -171,11 +172,12 @@ export const facebook: Provider = {
   },
 
   async listPosts(ctx) {
-    const { data } = await httpJson<{ data: any[] }>(
-      `${GRAPH}/${ctx.accountId}/posts?fields=id,message,permalink_url,created_time,shares,comments.limit(0).summary(true),reactions.limit(0).summary(true)&limit=25&access_token=${ctx.accessToken}`,
+    const all = await fetchAll<any>(
+      `${GRAPH}/${ctx.accountId}/posts?fields=id,message,permalink_url,created_time,shares,comments.limit(0).summary(true),reactions.limit(0).summary(true)&limit=50&access_token=${ctx.accessToken}`,
+      10, // jusqu'à 500 publications
     );
     const out: RemotePost[] = [];
-    for (const [i, p] of data.data.entries()) {
+    for (const [i, p] of all.entries()) {
       const metrics: Record<string, number> = {};
       if (typeof p.reactions?.summary?.total_count === 'number') metrics.likes = p.reactions.summary.total_count;
       if (typeof p.comments?.summary?.total_count === 'number') metrics.comments = p.comments.summary.total_count;
@@ -202,14 +204,17 @@ export const facebook: Provider = {
     return out;
   },
 
-  async listComments(ctx, posts) {
+  async listComments(ctx, posts, known) {
     const out: RemoteComment[] = [];
-    for (const p of posts.filter((p) => (p.metrics.comments ?? 0) > 0).slice(0, 15)) {
+    for (const [i, p] of posts.entries()) {
+      if (!wantsComments(p, i, known)) continue;
       try {
-        const { data } = await httpJson<{ data: any[] }>(
-          `${GRAPH}/${p.remoteId}/comments?fields=id,message,from{name},created_time&limit=50&access_token=${ctx.accessToken}`,
+        // filter=stream: inclut aussi les réponses imbriquées; toutes les pages sont lues
+        const data = await fetchAll<any>(
+          `${GRAPH}/${p.remoteId}/comments?fields=id,message,from{name},created_time&filter=stream&limit=100&access_token=${ctx.accessToken}`,
+          30,
         );
-        for (const c of data.data)
+        for (const c of data)
           out.push({
             remoteId: c.id,
             mediaId: p.remoteId,

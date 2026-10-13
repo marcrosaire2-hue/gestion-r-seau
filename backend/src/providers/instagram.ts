@@ -1,5 +1,6 @@
 import { env } from '../env';
 import { ApiError, form, httpJson } from '../http';
+import { fetchAll, wantsComments } from './paging';
 import type { Provider, Ctx, MediaItem, RemotePost, RemoteComment } from './types';
 
 const GRAPH = 'https://graph.instagram.com/v23.0';
@@ -157,11 +158,12 @@ export const instagram: Provider = {
   },
 
   async listPosts(ctx) {
-    const { data } = await httpJson<{ data: any[] }>(
-      `${GRAPH}/${ctx.accountId}/media?fields=id,caption,media_type,permalink,timestamp,like_count,comments_count&limit=25&access_token=${ctx.accessToken}`,
+    const all = await fetchAll<any>(
+      `${GRAPH}/${ctx.accountId}/media?fields=id,caption,media_type,permalink,timestamp,like_count,comments_count&limit=50&access_token=${ctx.accessToken}`,
+      10, // jusqu'à 500 publications
     );
     const out: RemotePost[] = [];
-    for (const [i, m] of data.data.entries()) {
+    for (const [i, m] of all.entries()) {
       const metrics: Record<string, number> = {};
       if (typeof m.like_count === 'number') metrics.likes = m.like_count;
       if (typeof m.comments_count === 'number') metrics.comments = m.comments_count;
@@ -189,14 +191,16 @@ export const instagram: Provider = {
     return out;
   },
 
-  async listComments(ctx, posts) {
+  async listComments(ctx, posts, known) {
     const out: RemoteComment[] = [];
-    for (const p of posts.filter((p) => (p.metrics.comments ?? 0) > 0).slice(0, 15)) {
+    for (const [i, p] of posts.entries()) {
+      if (!wantsComments(p, i, known)) continue;
       try {
-        const { data } = await httpJson<{ data: any[] }>(
-          `${GRAPH}/${p.remoteId}/comments?fields=id,text,username,timestamp&limit=50&access_token=${ctx.accessToken}`,
+        const data = await fetchAll<any>(
+          `${GRAPH}/${p.remoteId}/comments?fields=id,text,username,timestamp&limit=100&access_token=${ctx.accessToken}`,
+          30,
         );
-        for (const c of data.data)
+        for (const c of data)
           out.push({
             remoteId: c.id,
             mediaId: p.remoteId,

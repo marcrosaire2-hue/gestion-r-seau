@@ -84,6 +84,7 @@ export interface Provider {
   checkPublish?(ctx: Ctx, remoteId: string): Promise<{ state: 'published' | 'processing' | 'failed'; error?: string }>;
   followers?(ctx: Ctx): Promise<number | null>;
   listPosts?(ctx: Ctx): Promise<RemotePost[]>;
-  listComments?(ctx: Ctx, posts: RemotePost[]): Promise<RemoteComment[]>;
+  /** `known`: nombre de commentaires déjà enregistrés par publication (évite de tout relire à chaque synchronisation). */
+  listComments?(ctx: Ctx, posts: RemotePost[], known?: Record<string, number>): Promise<RemoteComment[]>;
   reply?(ctx: Ctx, commentRemoteId: string, text: string): Promise<void>;
 }

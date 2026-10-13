@@ -59,7 +59,8 @@ export async function syncConnection(conn: ConnectionRow) {
 
   try {
     if (provider.listComments) {
-      const comments = await provider.listComments(ctx, posts);
+      const counts = await C.comments.aggregate([{ $match: { connection_id: conn.id } }, { $group: { _id: '$remote_media_id', n: { $sum: 1 } } }]).toArray();
+      const comments = await provider.listComments(ctx, posts, Object.fromEntries(counts.map((x: any) => [x._id, x.n])));
       if (comments.length)
         // $setOnInsert uniquement: ne jamais écraser le statut de traitement d'un commentaire déjà connu.
         await C.comments.bulkWrite(
