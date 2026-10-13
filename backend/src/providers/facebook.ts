@@ -11,6 +11,7 @@ const SCOPES = [
   'pages_read_engagement',
   'pages_read_user_content',
   'pages_manage_engagement',
+  'business_management',
 ];
 const FORM = { 'Content-Type': 'application/x-www-form-urlencoded' };
 
@@ -87,6 +88,28 @@ export const facebook: Provider = {
       pages.data.push(...r.data.data);
       next = r.data.paging?.next;
     }
+    // Pages d'entreprise (portefeuilles Meta Business): absentes de /me/accounts, listées si business_management est accordée.
+    try {
+      const { data: biz } = await httpJson<{ data: { id: string }[] }>(`${GRAPH}/me/businesses?fields=id&limit=50&access_token=${long.access_token}`);
+      for (const b of biz.data) {
+        for (const edge of ['owned_pages', 'client_pages']) {
+          let url: string | undefined = `${GRAPH}/${b.id}/${edge}?fields=id,name,access_token,picture.type(large){url}&limit=25&access_token=${long.access_token}`;
+          for (let i = 0; url && i < 20; i++) {
+            try {
+              const r: { data: { data: Pg[]; paging?: { next?: string } } } = await httpJson(url);
+              for (const p of r.data.data) if (p.access_token && !pages.data.some((x) => x.id === p.id)) pages.data.push(p);
+              url = r.data.paging?.next;
+            } catch (e) {
+              console.warn(`facebook ${edge} ${b.id}:`, (e as Error).message);
+              url = undefined;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('facebook businesses:', (e as Error).message); // permission business_management absente: on garde les Pages directes
+    }
+    console.log(`facebook: ${pages.data.length} Page(s) proposée(s)`);
     if (!pages.data.length)
       throw new ApiError('Aucune Page Facebook trouvée. Vous devez administrer une Page, et l’avoir cochée lors de l’autorisation.', 422);
     return pages.data.map((p) => ({ id: p.id, name: p.name, avatarUrl: p.picture?.data?.url, accessToken: p.access_token, scopes: SCOPES }));
