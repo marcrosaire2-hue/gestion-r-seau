@@ -1,6 +1,6 @@
 import { env } from '../env';
 import { ApiError, form, httpJson } from '../http';
-import { fetchAll, wantsComments } from './paging';
+import { deepInsights, fetchAll, wantsComments } from './paging';
 import type { Provider, Ctx, MediaItem, RemotePost, RemoteComment } from './types';
 
 const GRAPH = 'https://graph.instagram.com/v23.0';
@@ -160,14 +160,14 @@ export const instagram: Provider = {
   async listPosts(ctx) {
     const all = await fetchAll<any>(
       `${GRAPH}/${ctx.accountId}/media?fields=id,caption,media_type,permalink,timestamp,like_count,comments_count&limit=50&access_token=${ctx.accessToken}`,
-      10, // jusqu'à 500 publications
     );
     const out: RemotePost[] = [];
+    const deep = deepInsights(ctx.accountId);
     for (const [i, m] of all.entries()) {
       const metrics: Record<string, number> = {};
       if (typeof m.like_count === 'number') metrics.likes = m.like_count;
       if (typeof m.comments_count === 'number') metrics.comments = m.comments_count;
-      if (i < 15) {
+      if (i < 15 || deep) {
         // Les métriques disponibles varient selon le type de média: on tente large puis on réduit.
         for (const set of ['reach,views,saved,shares', 'reach,saved']) {
           try {
@@ -197,8 +197,7 @@ export const instagram: Provider = {
       if (!wantsComments(p, i, known)) continue;
       try {
         const data = await fetchAll<any>(
-          `${GRAPH}/${p.remoteId}/comments?fields=id,text,username,timestamp&limit=100&access_token=${ctx.accessToken}`,
-          30,
+          `${GRAPH}/${p.remoteId}/comments?fields=id,text,username,timestamp&limit=50&access_token=${ctx.accessToken}`,
         );
         for (const c of data)
           out.push({

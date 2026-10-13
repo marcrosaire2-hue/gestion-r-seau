@@ -1,12 +1,13 @@
 import type { Platform } from './api'
 
-export const PLATFORM_LIST: Platform[] = ['instagram', 'linkedin', 'tiktok', 'facebook']
+export const PLATFORM_LIST: Platform[] = ['instagram', 'linkedin', 'tiktok', 'facebook', 'youtube']
 
 export const PLATFORM_META: Record<Platform, { label: string; color: string; soft: string }> = {
   instagram: { label: 'Instagram', color: '#e1306c', soft: 'bg-pink-50 text-pink-700 ring-pink-200' },
   linkedin: { label: 'LinkedIn', color: '#0a66c2', soft: 'bg-sky-50 text-sky-700 ring-sky-200' },
   tiktok: { label: 'TikTok', color: '#111827', soft: 'bg-slate-100 text-slate-800 ring-slate-300' },
   facebook: { label: 'Facebook', color: '#1877f2', soft: 'bg-blue-50 text-blue-700 ring-blue-200' },
+  youtube: { label: 'YouTube', color: '#ff0000', soft: 'bg-red-50 text-red-700 ring-red-200' },
 }
 
 export function Logo({ platform, size = 24 }: { platform: Platform; size?: number }) {
@@ -32,6 +33,13 @@ export function Logo({ platform, size = 24 }: { platform: Platform; size?: numbe
       return (
         <svg {...common} fill={c}>
           <path d="M16.6 3c.3 2.300 1.700 3.800 3.900 4v3.100a7.100 7.100 0 0 1-3.900-1.200v6.100a5.600 5.600 0 1 1-5.600-5.600c.3 0 .6 0 .9.100v3.200a2.500 2.500 0 1 0 1.600 2.300V3z" />
+        </svg>
+      )
+    case 'youtube':
+      return (
+        <svg {...common}>
+          <rect x="1.5" y="4.5" width="21" height="15" rx="4.5" fill={c} />
+          <path fill="#fff" d="M10 8.8v6.4l5.500-3.200z" />
         </svg>
       )
     case 'facebook':

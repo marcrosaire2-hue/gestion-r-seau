@@ -10,7 +10,7 @@ import Assistant from './pages/Assistant'
 import Users from './pages/Users'
 
 // Une page par réseau: vue d'ensemble, publications, commentaires, calendrier et conseils.
-const NETWORKS: Platform[] = ['facebook', 'instagram', 'linkedin', 'tiktok']
+const NETWORKS: Platform[] = ['facebook', 'instagram', 'youtube', 'linkedin', 'tiktok']
 
 export default function App() {
   const [authed, setAuthed] = useState(() => !!getToken())

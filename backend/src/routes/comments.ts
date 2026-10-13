@@ -18,7 +18,7 @@ comments.get(
     if (platform) q.platform = String(platform);
     if (status) q.status = String(status);
     if (from || to) q.commented_at = { ...(from ? { $gte: new Date(from) } : {}), ...(to ? { $lte: new Date(to) } : {}) };
-    res.json(await C.comments.find(q, NO_ID).sort({ commented_at: -1 }).limit(5000).toArray());
+    res.json(await C.comments.find(q, NO_ID).sort({ commented_at: -1 }).toArray());
   }),
 );
 

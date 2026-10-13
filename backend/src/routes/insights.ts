@@ -13,7 +13,7 @@ const sum = (rows: { metrics: Record<string, number> }[], k: string) => {
 
 /** L'engagement n'est calculé qu'avec la base propre à chaque réseau; jamais comparé entre réseaux. */
 function engagement(platform: Platform, rows: { metrics: Record<string, number> }[]) {
-  const basisKey = (platform === 'instagram' || platform === 'facebook') ? 'reach' : platform === 'tiktok' ? 'views' : null;
+  const basisKey = (platform === 'instagram' || platform === 'facebook') ? 'reach' : (platform === 'tiktok' || platform === 'youtube') ? 'views' : null;
   if (!basisKey) return { rate: null, basis: null };
   const withBasis = rows.filter((r) => (r.metrics[basisKey] ?? 0) > 0);
   const base = sum(withBasis, basisKey);

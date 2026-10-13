@@ -18,6 +18,8 @@ const schema = z.object({
   LINKEDIN_API_VERSION: z.string().default('202506'),
   TIKTOK_CLIENT_KEY: z.string().optional(),
   TIKTOK_CLIENT_SECRET: z.string().optional(),
+  YOUTUBE_CLIENT_ID: z.string().optional(),
+  YOUTUBE_CLIENT_SECRET: z.string().optional(),
   FACEBOOK_APP_ID: z.string().optional(),
   FACEBOOK_APP_SECRET: z.string().optional(),
   /** Facultatif: Page à connecter si vous en administrez plusieurs (sinon la première). */

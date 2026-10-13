@@ -1,6 +1,6 @@
 import { env } from '../env';
 import { ApiError, form, httpJson } from '../http';
-import { fetchAll, wantsComments } from './paging';
+import { deepInsights, fetchAll, wantsComments } from './paging';
 import type { AccountOption, Provider, Ctx, MediaItem, RemotePost, RemoteComment } from './types';
 
 const V = 'v23.0';
@@ -174,15 +174,15 @@ export const facebook: Provider = {
   async listPosts(ctx) {
     const all = await fetchAll<any>(
       `${GRAPH}/${ctx.accountId}/posts?fields=id,message,permalink_url,created_time,shares,comments.limit(0).summary(true),reactions.limit(0).summary(true)&limit=50&access_token=${ctx.accessToken}`,
-      10, // jusqu'à 500 publications
     );
     const out: RemotePost[] = [];
+    const deep = deepInsights(ctx.accountId);
     for (const [i, p] of all.entries()) {
       const metrics: Record<string, number> = {};
       if (typeof p.reactions?.summary?.total_count === 'number') metrics.likes = p.reactions.summary.total_count;
       if (typeof p.comments?.summary?.total_count === 'number') metrics.comments = p.comments.summary.total_count;
       metrics.shares = p.shares?.count ?? 0;
-      if (i < 15) {
+      if (i < 15 || deep) {
         // Meta renomme régulièrement ses métriques de portée: on tente, et on ignore si indisponible.
         try {
           const r = await httpJson<{ data: { name: string; values: { value: number }[] }[] }>(
@@ -212,7 +212,6 @@ export const facebook: Provider = {
         // filter=stream: inclut aussi les réponses imbriquées; toutes les pages sont lues
         const data = await fetchAll<any>(
           `${GRAPH}/${p.remoteId}/comments?fields=id,message,from{name},created_time&filter=stream&limit=100&access_token=${ctx.accessToken}`,
-          30,
         );
         for (const c of data)
           out.push({

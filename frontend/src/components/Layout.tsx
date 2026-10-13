@@ -7,7 +7,7 @@ import { getRole, getUser, setStoredRole, setToken } from '../lib/session'
 
 interface Item { to: string; label: string; end?: boolean; icon?: LucideIcon; platform?: Platform }
 
-const NETWORKS: Platform[] = ['facebook', 'instagram', 'linkedin', 'tiktok']
+const NETWORKS: Platform[] = ['facebook', 'instagram', 'youtube', 'linkedin', 'tiktok']
 const GROUPS: { title: string; items: Item[] }[] = [
   { title: 'MENU PRINCIPAL', items: [{ to: '/', label: 'Tableau de bord', icon: LayoutDashboard, end: true }] },
   { title: 'RÉSEAUX', items: NETWORKS.map((p) => ({ to: `/${p}`, label: PLATFORM_META[p].label, platform: p })) },

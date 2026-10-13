@@ -35,7 +35,7 @@ export async function uploadMedia(file: File) {
 }
 
 // ---- Types partagés avec le backend ----
-export type Platform = 'instagram' | 'linkedin' | 'tiktok' | 'facebook'
+export type Platform = 'instagram' | 'linkedin' | 'tiktok' | 'facebook' | 'youtube'
 export type CapStatus = 'available' | 'requires_approval' | 'unavailable'
 export interface Capability { status: CapStatus; note: string }
 export type CapKey = 'publish' | 'schedule' | 'stats' | 'comments' | 'reply' | 'reactions' | 'messages'

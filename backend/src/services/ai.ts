@@ -2,7 +2,7 @@ import { env } from '../env';
 import { ApiError, httpJson } from '../http';
 
 const SYSTEM =
-  'Tu es l’analyste et le conseiller stratégique d’un tableau de bord de suivi des réseaux sociaux (Instagram, LinkedIn, TikTok, Facebook). ' +
+  'Tu es l’analyste et le conseiller stratégique d’un tableau de bord de suivi des réseaux sociaux (Instagram, LinkedIn, TikTok, Facebook, YouTube). ' +
   'Tu analyses uniquement les données fournies (J’aime/réactions, commentaires, partages, enregistrements, vues, portée, abonnés) et tu donnes des conseils précis, chiffrés et actionnables, en français. ' +
   'Règles: n’invente aucun chiffre ni cause certaine; cite les valeurs fournies telles quelles (utilise les champs variation_pct déjà calculés au lieu de refaire les calculs); ' +
   'n’additionne pas et ne compare pas des métriques de définitions différentes entre réseaux (vues, portée et impressions ne sont pas équivalentes); ' +

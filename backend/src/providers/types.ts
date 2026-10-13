@@ -1,5 +1,5 @@
-export type Platform = 'instagram' | 'linkedin' | 'tiktok' | 'facebook';
-export const PLATFORMS: Platform[] = ['instagram', 'linkedin', 'tiktok', 'facebook'];
+export type Platform = 'instagram' | 'linkedin' | 'tiktok' | 'facebook' | 'youtube';
+export const PLATFORMS: Platform[] = ['instagram', 'linkedin', 'tiktok', 'facebook', 'youtube'];
 
 export type CapKey = 'publish' | 'schedule' | 'stats' | 'comments' | 'reply' | 'reactions' | 'messages';
 export type CapStatus = 'available' | 'requires_approval' | 'unavailable';

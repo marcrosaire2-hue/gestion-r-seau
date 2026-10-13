@@ -1,15 +1,29 @@
 import { httpJson } from '../http';
 
-/** Suit `paging.next` de l'API Graph jusqu'au bout (plafonné par `maxPages` pour borner le coût). */
-export async function fetchAll<T>(firstUrl: string, maxPages: number): Promise<T[]> {
+/** Suit `paging.next` de l'API Graph jusqu'à la dernière page (sans plafond; s'arrête si une page se répète). */
+export async function fetchAll<T>(firstUrl: string): Promise<T[]> {
   const out: T[] = [];
+  const seen = new Set<string>();
   let url: string | undefined = firstUrl;
-  for (let i = 0; url && i < maxPages; i++) {
+  while (url && !seen.has(url)) {
+    seen.add(url);
     const r: { data: { data: T[]; paging?: { next?: string } } } = await httpJson(url);
     out.push(...r.data.data);
     url = r.data.paging?.next;
   }
   return out;
+}
+
+const lastDeep = new Map<string, number>();
+/**
+ * Les statistiques détaillées (portée, vues…) de TOUTES les publications sont relues une fois par heure;
+ * entre-temps seules les plus récentes sont actualisées, pour ne pas dépasser les limites d'appels du réseau.
+ */
+export function deepInsights(accountId: string): boolean {
+  const now = Date.now();
+  if (now - (lastDeep.get(accountId) ?? 0) < 3_600_000) return false;
+  lastDeep.set(accountId, now);
+  return true;
 }
 
 /**

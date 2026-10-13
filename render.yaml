@@ -33,5 +33,17 @@ services:
         sync: false
       - key: INSTAGRAM_APP_SECRET
         sync: false
-      - key: AI_API_KEY            # Assistant IA (clé Gemini gratuite: aistudio.google.com/app/apikey)
+      - key: LINKEDIN_CLIENT_ID
+        sync: false
+      - key: LINKEDIN_CLIENT_SECRET
+        sync: false
+      - key: TIKTOK_CLIENT_KEY
+        sync: false
+      - key: TIKTOK_CLIENT_SECRET
+        sync: false
+      - key: YOUTUBE_CLIENT_ID
+        sync: false
+      - key: YOUTUBE_CLIENT_SECRET
+        sync: false
+      - key: AI_API_KEY          # Assistant IA (clé Gemini gratuite: aistudio.google.com/app/apikey)
         sync: false

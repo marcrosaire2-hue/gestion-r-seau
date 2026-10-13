@@ -15,7 +15,7 @@ const sumK = (rows: Row[], k: string) => {
 
 function period(platform: Platform, rows: Row[]) {
   // Base du taux d'engagement propre à chaque réseau (jamais comparée entre réseaux)
-  const basis = platform === 'instagram' || platform === 'facebook' ? 'reach' : platform === 'tiktok' ? 'views' : null;
+  const basis = platform === 'instagram' || platform === 'facebook' ? 'reach' : (platform === 'tiktok' || platform === 'youtube') ? 'views' : null;
   const withBasis = basis ? rows.filter((r) => (r.metrics[basis] ?? 0) > 0) : [];
   const base = basis ? sumK(withBasis, basis) : null;
   const rate = base ? (withBasis.reduce((a, r) => a + inter(r.metrics), 0) / base) * 100 : null;
