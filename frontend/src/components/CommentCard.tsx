@@ -12,7 +12,7 @@ export const COMMENT_STATUS: Record<CommentRow['status'], { label: string; pill:
   done: { label: 'Traité', pill: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400' },
 }
 
-export function CommentCard({ c, onChange }: { c: CommentRow; onChange: () => void }) {
+export function CommentCard({ c, onChange, hideMedia = false }: { c: CommentRow; onChange: () => void; hideMedia?: boolean }) {
   const toast = useToast()
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
@@ -48,7 +48,7 @@ export function CommentCard({ c, onChange }: { c: CommentRow; onChange: () => vo
             <span className={`ml-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${st.pill}`}><span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />{st.label}</span>
           </div>
 
-          {(c.media_caption || c.media_url) && (
+          {!hideMedia && (c.media_caption || c.media_url) && (
             <p className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400">
               <span className="truncate">Sur : « {c.media_caption || 'publication'} »</span>
               {c.media_url && <a href={c.media_url} target="_blank" rel="noreferrer" aria-label="Voir la publication" className="shrink-0 text-brand-700 hover:text-brand-600"><ExternalLink size={12} /></a>}

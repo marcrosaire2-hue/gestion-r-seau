@@ -243,7 +243,7 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
           {/* ---------- Commentaires ---------- */}
           {tab === 'commentaires' && (
             comments.loading && !comments.data ? <Spinner /> : comments.error ? <ErrorBox error={comments.error} onRetry={comments.reload} /> :
-            <CommentsList all={comments.data ?? []} onChange={comments.reload} />
+            <CommentsList all={comments.data ?? []} posts={posts.data ?? []} onChange={comments.reload} />
           )}
 
           {/* ---------- Calendrier ---------- */}
@@ -390,11 +390,23 @@ function PostsTable({ data, loading, error, reload, days }: { data: PostItem[] |
   )
 }
 
-function CommentsList({ all, onChange }: { all: CommentRow[]; onChange: () => void }) {
+function CommentsList({ all, posts, onChange }: { all: CommentRow[]; posts: PostItem[]; onChange: () => void }) {
   const [status, setStatus] = useState<CommentRow['status'] | ''>('')
   const [q, setQ] = useState('')
   const count = (s: CommentRow['status']) => all.filter((c) => c.status === s).length
   const rows = all.filter((c) => (!status || c.status === status) && (!q.trim() || c.text.toLowerCase().includes(q.trim().toLowerCase()) || (c.author ?? '').toLowerCase().includes(q.trim().toLowerCase())))
+  // Commentaires classés par publication (la plus récente d'abord)
+  const groups = useMemo(() => {
+    const byId = new Map(posts.map((p) => [p.remote_id, p]))
+    const m = new Map<string, { key: string; post?: PostItem; comments: CommentRow[] }>()
+    for (const c of rows) {
+      const key = c.remote_media_id ?? 'none'
+      if (!m.has(key)) m.set(key, { key, post: byId.get(key), comments: [] })
+      m.get(key)!.comments.push(c)
+    }
+    const when = (g: { post?: PostItem; comments: CommentRow[] }) => +new Date(g.post?.published_at ?? g.comments[0].commented_at ?? 0)
+    return [...m.values()].sort((a, b) => when(b) - when(a))
+  }, [rows, posts])
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -412,7 +424,26 @@ function CommentsList({ all, onChange }: { all: CommentRow[]; onChange: () => vo
           <MessageSquare size={32} className="mx-auto mb-2 text-slate-300" />
           <p className="font-medium text-slate-700">{all.length === 0 ? 'Aucun commentaire pour le moment' : 'Aucun commentaire ne correspond'}</p>
         </div>
-      ) : <ul className="space-y-3">{rows.map((c) => <li key={c.id}><CommentCard c={c} onChange={onChange} /></li>)}</ul>}
+      ) : (
+        <div className="space-y-5">
+          {groups.map((g) => (
+            <section key={g.key} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60">
+              <header className="border-b border-slate-200 bg-white px-4 py-3 md:px-5">
+                <p className="flex items-center gap-2 font-semibold text-slate-900">
+                  <span className="truncate">{g.post?.caption || g.comments[0].media_caption || (g.key === 'none' ? 'Publication inconnue' : '(sans légende)')}</span>
+                  {(g.post?.permalink || g.comments[0].media_url) && <a href={(g.post?.permalink || g.comments[0].media_url)!} target="_blank" rel="noreferrer" aria-label="Voir la publication" className="shrink-0 text-brand-700"><ExternalLink size={14} /></a>}
+                </p>
+                <p className="mt-0.5 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-500">
+                  {g.post && <span>{format(new Date(g.post.published_at), 'd MMM yyyy HH:mm', { locale: fr })}</span>}
+                  {g.post && METRIC_LABELS.filter(([k]) => k === 'likes' || k === 'shares').filter(([k]) => typeof g.post!.metrics[k] === 'number').map(([k, l]) => <span key={k}>{l} : <b className="text-slate-700">{fmtNum(g.post!.metrics[k])}</b></span>)}
+                  <span>{g.comments.length} commentaire{g.comments.length > 1 ? 's' : ''} affiché{g.comments.length > 1 ? 's' : ''}{typeof g.post?.metrics.comments === 'number' ? ` sur ${fmtNum(g.post.metrics.comments)}` : ''}</span>
+                </p>
+              </header>
+              <ul className="space-y-3 p-3 md:p-4">{g.comments.map((c) => <li key={c.id}><CommentCard c={c} onChange={onChange} hideMedia /></li>)}</ul>
+            </section>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -83,6 +83,7 @@ export interface CommentRow {
   platform: Platform
   author: string | null
   text: string
+  remote_media_id?: string | null
   media_caption: string | null
   media_url: string | null
   commented_at: string | null
