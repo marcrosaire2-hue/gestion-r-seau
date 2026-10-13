@@ -6,7 +6,7 @@ import { AlertTriangle, ChevronDown, ExternalLink, Link2, Loader2, MessageSquare
 import { api, type CommentRow, type NetworkInfo, type Platform } from '../lib/api'
 import { getRole } from '../lib/session'
 import { Logo, PLATFORM_META } from '../lib/platforms'
-import { Delta, EngagementChart, FollowersChart, pctChange, type Timeline } from '../components/charts'
+import { Delta, EngagementChart, FollowersChart, Ring, Spark, pctChange, type Timeline } from '../components/charts'
 import { CommentCard } from '../components/CommentCard'
 import { Markdown } from '../components/Markdown'
 import { METRIC_LABELS, POST_TYPE, PostCalendar, type PostItem } from '../components/PostCalendar'
@@ -33,16 +33,6 @@ const QUESTIONS = [
   'Comment améliorer mon taux d’engagement ?',
   'Que faire pour gagner des abonnés ?',
 ]
-
-function Kpi({ label, value, delta, hint }: { label: string; value: string; delta?: number | null; hint?: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-sm text-slate-500">{label}</p>
-      <div className="mt-2 flex flex-wrap items-center gap-2"><span className="text-3xl font-semibold tracking-tight text-slate-900">{value}</span>{delta !== undefined && <Delta pct={delta} />}</div>
-      {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
-    </div>
-  )
-}
 
 const Section = ({ title, children, className = '' }: { title: ReactNode; children: ReactNode; className?: string }) => (
   <section className={`rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}>
@@ -121,10 +111,11 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
       ? { t: 'Expiré', c: 'bg-amber-50 text-amber-700', d: 'bg-amber-500' }
       : { t: net.configured ? 'Non connecté' : 'Non configuré', c: 'bg-slate-100 text-slate-600', d: 'bg-slate-400' }
 
+  const fit = connected && statsOK && tab === 'apercu'
   return (
-    <>
+    <div className={fit ? 'flex flex-col lg:h-[calc(100vh-8rem)] lg:min-h-[34rem]' : ''}>
       {/* En-tête */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="grid h-12 w-12 place-items-center rounded-xl bg-white shadow-sm ring-1 ring-slate-200"><Logo platform={platform} size={28} /></span>
           <div>
@@ -169,7 +160,7 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
       {connected && (
         <>
           {/* Onglets */}
-          <div className="mb-5 flex gap-1 overflow-x-auto border-b border-slate-200" role="tablist" aria-label={`Sections ${meta.label}`}>
+          <div className="mb-3 flex shrink-0 gap-1 overflow-x-auto border-b border-slate-200" role="tablist" aria-label={`Sections ${meta.label}`}>
             {tabs.map((t) => (
               <button key={t.key} role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
                 className={`-mb-px inline-flex shrink-0 items-center gap-2 border-b-2 px-3.5 py-2.5 text-sm font-medium transition ${tab === t.key ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
@@ -181,56 +172,152 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
 
           {/* ---------- Vue d'ensemble ---------- */}
           {tab === 'apercu' && (statsOK ? (
-            ana.loading && !stats ? <Spinner /> : stats ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                  <Kpi label="Abonnés" value={fmtNum(stats.followers.latest)}
-                    delta={stats.followers.latest !== null && stats.followers.first !== null && stats.followers.series.length > 1 ? pctChange(stats.followers.latest, stats.followers.first) : undefined} />
-                  <Kpi label="Publications" value={fmtNum(stats.current.posts)} delta={pctChange(stats.current.posts, stats.previous.posts)} />
-                  <Kpi label="Interactions" value={stats.current.posts ? fmtNum(inter(stats.current)) : '—'} delta={pctChange(inter(stats.current), inter(stats.previous))} />
-                  <Kpi label="Taux d’engagement" value={stats.current.engagement.rate === null ? '—' : `${(stats.current.engagement.rate * 100).toFixed(1)} %`}
-                    hint={stats.current.engagement.basis ? `base : ${stats.current.engagement.basis === 'reach' ? 'portée' : 'vues'}` : undefined} />
-                </div>
-
-                <div className="grid gap-4 lg:grid-cols-5">
-                  <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-3">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <h2 className="text-lg font-semibold">Engagement</h2>
-                      <div className="flex rounded-full border border-slate-200 p-0.5 text-sm" role="group" aria-label="Regroupement">
-                        {([['week', 'Hebdo'], ['month', 'Mensuel']] as const).map(([k, l]) => (
-                          <button key={k} onClick={() => setBucket(k)} aria-pressed={bucket === k} className={`rounded-full px-3.5 py-1 font-medium ${bucket === k ? 'bg-brand-600 text-white' : 'text-slate-600'}`}>{l}</button>
-                        ))}
+            ana.loading && !stats ? <Spinner /> : stats ? (() => {
+              const cur = stats.current
+              const rate = cur.engagement.rate
+              const reachLike = cur.reach !== null ? { label: 'Portée', value: cur.reach, prev: stats.previous.reach } : { label: 'Vues', value: cur.views, prev: stats.previous.views }
+              const buckets = tl.data?.buckets ?? []
+              const cList = comments.data ?? []
+              const cDone = cList.filter((c) => c.status === 'done').length
+              const cReplied = cList.filter((c) => c.status === 'replied').length
+              const cPending = cList.filter((c) => c.status === 'pending').length
+              const share = (n: number) => (cList.length ? Math.round((n / cList.length) * 100) : 0)
+              const parts = ([['likes', 'J’aime / réactions'], ['comments', 'Commentaires'], ['shares', 'Partages'], ['saved', 'Enregistrements']] as const)
+                .flatMap(([k, l]) => (cur[k] === null ? [] : [{ l: l as string, v: cur[k] as number }]))
+              const partsMax = Math.max(...parts.map((x) => x.v), 1)
+              const tile = 'rounded-2xl bg-white p-3.5 shadow-sm'
+              const rows = [...(posts.data ?? [])].sort((a, b) => +new Date(b.published_at) - +new Date(a.published_at)).slice(0, 4)
+              return (
+                <div className="flex min-h-0 flex-1 flex-col gap-3">
+                  {/* Rangée 1: abonnés + chiffres clés */}
+                  <div className="grid shrink-0 gap-3 lg:grid-cols-12">
+                    <section className={`${tile} flex items-center gap-4 lg:col-span-4`}>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-slate-500">Abonnés</p>
+                        <p className="truncate text-3xl font-semibold tracking-tight text-slate-900">{fmtNum(stats.followers.latest)}</p>
+                        {stats.followers.latest !== null && stats.followers.first !== null && stats.followers.series.length > 1 && <Delta pct={pctChange(stats.followers.latest, stats.followers.first)} />}
                       </div>
+                      <div className="flex flex-col items-center gap-1">
+                        <Ring pct={rate === null ? 0 : rate * 100} size={52}>{rate === null ? '—' : `${(rate * 100).toFixed(1)}%`}</Ring>
+                        <span className="text-[10px] text-slate-500">engagement</span>
+                      </div>
+                    </section>
+                    <div className="grid grid-cols-2 gap-3 lg:col-span-8 lg:grid-cols-4">
+                      {[
+                        { l: 'Publications', v: fmtNum(cur.posts), d: pctChange(cur.posts, stats.previous.posts), s: buckets.map((b) => b.posts) },
+                        { l: 'Interactions', v: cur.posts ? fmtNum(inter(cur)) : '—', d: pctChange(inter(cur), inter(stats.previous)), s: buckets.map((b) => b.interactions) },
+                        { l: reachLike.label, v: fmtNum(reachLike.value), d: reachLike.value !== null && reachLike.prev !== null ? pctChange(reachLike.value, reachLike.prev) : null, s: [] as number[] },
+                        { l: 'À traiter', v: commentsOK ? fmtNum(pending) : '—', d: null as number | null, s: [] as number[] },
+                      ].map((k) => (
+                        <section key={k.l} className={`${tile} flex flex-col justify-between`}>
+                          <div className="flex items-start justify-between gap-1">
+                            <p className="text-xs text-slate-500">{k.l}</p>
+                            <Spark values={k.s} className="h-6 w-14" />
+                          </div>
+                          <p className="mt-1 flex flex-wrap items-baseline gap-x-2 text-2xl font-semibold tracking-tight text-slate-900">{k.v}<span className="text-xs font-normal"><Delta pct={k.d} /></span></p>
+                        </section>
+                      ))}
                     </div>
-                    {tl.error ? <div className="mt-4"><ErrorBox error={tl.error} onRetry={tl.reload} /></div> : tl.data ? <EngagementChart data={tl.data} /> : <Spinner />}
-                  </section>
-                  <Section title="Abonnés" className="lg:col-span-2">
-                    <p className="mb-3 text-2xl font-semibold tracking-tight">{fmtNum(stats.followers.latest)}</p>
-                    <FollowersChart series={stats.followers.series} />
-                  </Section>
-                </div>
+                  </div>
 
-                <Section title={<span className="flex items-center gap-2"><Trophy size={18} className="text-amber-500" /> Meilleures publications</span>}>
-                  {stats.top.length === 0 ? <p className="mt-3 text-sm text-slate-500">Aucune publication sur la période.</p> : (
-                    <ol className="mt-3 space-y-3">
-                      {stats.top.map((t, i) => {
-                        const max = Math.max(...stats.top.map((x) => x.interactions), 1)
-                        return (
-                          <li key={t.remote_id} className="text-sm">
-                            <div className="flex items-center gap-3">
-                              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-medium text-slate-600">{i + 1}</span>
-                              <p className="min-w-0 flex-1 truncate">{t.permalink ? <a className="hover:underline" href={t.permalink} target="_blank" rel="noreferrer">{t.caption || '(sans légende)'}</a> : t.caption || '(sans légende)'}</p>
-                              <span className="shrink-0 font-semibold">{fmtNum(t.interactions)}</span>
+                  {/* Rangée 2: engagement + détail + commentaires / meilleures publications */}
+                  <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-12">
+                    <section className={`${tile} flex min-h-0 flex-col lg:col-span-5`}>
+                      <div className="flex shrink-0 items-center justify-between gap-2">
+                        <div>
+                          <h2 className="text-base font-semibold text-slate-900">Engagement</h2>
+                          <p className="text-2xl font-semibold tracking-tight text-slate-900">{tl.data ? fmtNum(tl.data.total) : '—'}</p>
+                        </div>
+                        <div className="flex rounded-full bg-slate-100 p-0.5 text-xs" role="group" aria-label="Regroupement">
+                          {([['week', 'Hebdo'], ['month', 'Mensuel']] as const).map(([k, l]) => (
+                            <button key={k} onClick={() => setBucket(k)} aria-pressed={bucket === k} className={`rounded-full px-3 py-1 font-medium ${bucket === k ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>{l}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="min-h-0 flex-1">
+                        {tl.error ? <ErrorBox error={tl.error} onRetry={tl.reload} /> : tl.data ? <EngagementChart data={tl.data} className="h-48 lg:h-full" /> : <Spinner />}
+                      </div>
+                    </section>
+
+                    <section className={`${tile} flex min-h-0 flex-col lg:col-span-3`}>
+                      <h2 className="shrink-0 text-base font-semibold text-slate-900">Détail des interactions</h2>
+                      {parts.length === 0 ? <p className="mt-3 text-sm text-slate-400">Pas de détail fourni.</p> : (
+                        <ul className="mt-3 flex min-h-0 flex-1 flex-col justify-around gap-2 overflow-hidden">
+                          {parts.map((x) => (
+                            <li key={x.l}>
+                              <div className="flex items-baseline justify-between text-sm"><span className="text-slate-600">{x.l}</span><span className="font-semibold tabular-nums text-slate-900">{fmtNum(x.v)}</span></div>
+                              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-[#0b7a43] to-[#4fb883]" style={{ width: `${(x.v / partsMax) * 100}%` }} /></div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </section>
+
+                    <section className={`${tile} flex min-h-0 flex-col lg:col-span-4`}>
+                      {commentsOK ? (
+                        <>
+                          <div className="flex shrink-0 items-center justify-between">
+                            <h2 className="text-base font-semibold text-slate-900">Commentaires</h2>
+                            <button onClick={() => setTab('commentaires')} className="text-xs font-medium text-brand-700 hover:underline">Voir tout</button>
+                          </div>
+                          {cList.length === 0 ? <p className="mt-3 text-sm text-slate-400">Aucun commentaire pour le moment.</p> : (
+                            <div className="mt-3 flex flex-1 items-center justify-around">
+                              {([['À traiter', cPending, '#f59e0b'], ['Répondus', cReplied, '#0b7a43'], ['Traités', cDone, '#64748b']] as const).map(([l, n, col]) => (
+                                <div key={l} className="flex flex-col items-center gap-1">
+                                  <Ring pct={share(n)} size={56} color={col}>{share(n)}%</Ring>
+                                  <span className="text-xs text-slate-600">{l}</span>
+                                  <span className="text-sm font-semibold tabular-nums text-slate-900">{n}</span>
+                                </div>
+                              ))}
                             </div>
-                            <div className="mt-1.5 ml-9 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-[#0b7a43] to-[#4fb883]" style={{ width: `${(t.interactions / max) * 100}%` }} /></div>
-                          </li>
-                        )
-                      })}
-                    </ol>
-                  )}
-                </Section>
-              </div>
-            ) : <ErrorBox error={ana.error ?? 'Statistiques indisponibles'} onRetry={ana.reload} />
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <h2 className="flex shrink-0 items-center gap-2 text-base font-semibold text-slate-900"><Trophy size={15} className="text-amber-500" /> Meilleures publications</h2>
+                          {stats.top.length === 0 ? <p className="mt-3 text-sm text-slate-400">Aucune publication sur la période.</p> : (
+                            <ol className="mt-3 min-h-0 flex-1 space-y-2 overflow-hidden">
+                              {stats.top.slice(0, 3).map((t, i) => (
+                                <li key={t.remote_id} className="flex items-center gap-2 text-sm">
+                                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-100 text-[11px] font-semibold text-slate-600">{i + 1}</span>
+                                  <span className="min-w-0 flex-1 truncate">{t.permalink ? <a className="hover:underline" href={t.permalink} target="_blank" rel="noreferrer">{t.caption || '(sans légende)'}</a> : t.caption || '(sans légende)'}</span>
+                                  <span className="font-semibold tabular-nums text-slate-900">{fmtNum(t.interactions)}</span>
+                                </li>
+                              ))}
+                            </ol>
+                          )}
+                        </>
+                      )}
+                    </section>
+                  </div>
+
+                  {/* Rangée 3: publications récentes + évolution des abonnés */}
+                  <div className="grid shrink-0 gap-3 lg:h-40 lg:grid-cols-12">
+                    <section className={`${tile} flex min-h-0 flex-col lg:col-span-7`}>
+                      <div className="flex shrink-0 items-center justify-between">
+                        <h2 className="text-base font-semibold text-slate-900">Publications récentes</h2>
+                        <button onClick={() => setTab('publications')} className="text-xs font-medium text-brand-700 hover:underline">Voir tout</button>
+                      </div>
+                      {rows.length === 0 ? <p className="mt-3 text-sm text-slate-400">Aucune publication sur la période.</p> : (
+                        <ul className="mt-2 min-h-0 flex-1 space-y-0.5 overflow-hidden">
+                          {rows.map((p) => (
+                            <li key={p.remote_id} className="flex h-[22px] items-center gap-3 text-sm">
+                              <span className="min-w-0 flex-1 truncate font-medium text-slate-800">{p.permalink ? <a className="hover:underline" href={p.permalink} target="_blank" rel="noreferrer">{p.caption || '(sans légende)'}</a> : p.caption || '(sans légende)'}</span>
+                              <span className="hidden whitespace-nowrap text-xs text-slate-500 sm:inline">{format(new Date(p.published_at), 'd MMM', { locale: fr })}</span>
+                              <span className="w-14 text-right font-semibold tabular-nums text-slate-900">{fmtNum(p.interactions)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </section>
+                    <section className={`${tile} flex min-h-0 flex-col lg:col-span-5`}>
+                      <h2 className="shrink-0 text-base font-semibold text-slate-900">Évolution des abonnés</h2>
+                      <div className="min-h-0 flex-1 overflow-hidden"><FollowersChart series={stats.followers.series} className="h-20" /></div>
+                    </section>
+                  </div>
+                </div>
+              )
+            })() : <ErrorBox error={ana.error ?? 'Statistiques indisponibles'} onRetry={ana.reload} />
           ) : (
             <Section title={`Statistiques de ${meta.label}`}>
               <p className="mt-1 text-sm text-slate-600">{net.capabilities.stats.note}</p>
@@ -256,7 +343,7 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
           {tab === 'connexion' && <ConnectionPanel net={net} onChanged={() => { nets.reload(); ana.reload(); comments.reload() }} />}
         </>
       )}
-    </>
+    </div>
   )
 }
 

@@ -21,7 +21,7 @@ export function Delta({ pct, onDark }: { pct: number | null; onDark?: boolean })
 }
 
 /** Courbe d'abonnés (un relevé par synchronisation) */
-export function FollowersChart({ series }: { series: { at: string; value: number }[] }) {
+export function FollowersChart({ series, className = 'h-32' }: { series: { at: string; value: number }[]; className?: string }) {
   if (series.length < 2) {
     return <p className="rounded-xl bg-slate-50 p-4 text-center text-sm text-slate-500">Pas encore assez de relevés.</p>
   }
@@ -32,7 +32,7 @@ export function FollowersChart({ series }: { series: { at: string; value: number
   const line = series.map((s, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(s.value).toFixed(1)}`).join(' ')
   return (
     <div>
-      <svg viewBox="0 0 300 100" className="h-32 w-full" role="img" aria-label="Évolution du nombre d’abonnés" preserveAspectRatio="none">
+      <svg viewBox="0 0 300 100" className={`${className} w-full`} role="img" aria-label="Évolution du nombre d’abonnés" preserveAspectRatio="none">
         <defs>
           <linearGradient id="fol" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#0b7a43" stopOpacity="0.25" /><stop offset="100%" stopColor="#0b7a43" stopOpacity="0" /></linearGradient>
         </defs>
@@ -118,5 +118,32 @@ export function EngagementChart({ data, className = 'h-64' }: { data: Timeline; 
         })}
       </div>
     </div>
+  )
+}
+
+/** Mini-courbe (tendance), affichée seulement avec au moins deux points. */
+export function Spark({ values, className = 'h-8 w-20' }: { values: number[]; className?: string }) {
+  if (values.length < 2) return null
+  const min = Math.min(...values), max = Math.max(...values), range = max - min || 1
+  const pts = values.map((v, i) => `${((i / (values.length - 1)) * 100).toFixed(1)},${(26 - ((v - min) / range) * 22).toFixed(1)}`).join(' ')
+  return (
+    <svg viewBox="0 0 100 30" preserveAspectRatio="none" className={className} aria-hidden>
+      <polyline points={pts} fill="none" stroke="#0b7a43" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  )
+}
+
+/** Anneau de progression (0–100). */
+export function Ring({ pct, size = 44, color = '#0b7a43', children }: { pct: number; size?: number; color?: string; children?: React.ReactNode }) {
+  const r = 18, circ = 2 * Math.PI * r
+  const p = Math.max(0, Math.min(100, pct))
+  return (
+    <span className="relative inline-grid place-items-center" style={{ width: size, height: size }}>
+      <svg viewBox="0 0 44 44" width={size} height={size} className="-rotate-90" aria-hidden>
+        <circle cx="22" cy="22" r={r} fill="none" stroke="#e5e7eb" strokeWidth="5" />
+        <circle cx="22" cy="22" r={r} fill="none" stroke={color} strokeWidth="5" strokeLinecap="round" strokeDasharray={`${(p / 100) * circ} ${circ}`} />
+      </svg>
+      <span className="absolute text-[10px] font-semibold text-slate-700">{children}</span>
+    </span>
   )
 }
