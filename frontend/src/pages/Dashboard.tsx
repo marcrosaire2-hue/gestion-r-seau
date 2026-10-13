@@ -101,7 +101,7 @@ export default function Dashboard() {
   const card = 'flex min-h-0 flex-col rounded-2xl bg-white p-4 shadow-sm'
 
   return (
-    <div className="flex flex-col gap-3 lg:h-[calc(100vh-8rem)] lg:min-h-[36rem] lg:overflow-hidden">
+    <div className="flex flex-col gap-3 [@media(min-width:1280px)_and_(min-height:820px)]:h-[calc(100vh-8rem)] [@media(min-width:1280px)_and_(min-height:820px)]:overflow-hidden">
       {/* En-tête */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
         <div>
@@ -130,7 +130,7 @@ export default function Dashboard() {
       )}
 
       {/* Chiffres clés */}
-      <div className="grid shrink-0 grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid shrink-0 grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-4">
         <Kpi icon={<Users size={22} />} tint="bg-emerald-100 text-emerald-700" bg="to-emerald-50/60" title="Abonnés" value={fmtNum(totalFollowers)} />
         <Kpi icon={<BarChart3 size={22} />} tint="bg-sky-100 text-sky-600" bg="to-sky-50/60" title="Publications" value={stats.length ? fmtNum(posts) : '—'} note={stats.length ? <>{postsDelta !== null && <Delta pct={postsDelta} />}<span>vs. {days} jours</span></> : null} />
         <Kpi icon={<Heart size={22} />} tint="bg-pink-100 text-pink-600" bg="to-pink-50/60" title="Interactions" value={stats.length ? fmtNum(cur) : '—'} note={stats.length ? <>{delta !== null && <Delta pct={delta} />}<span>vs. {days} jours</span></> : null} />
@@ -144,7 +144,7 @@ export default function Dashboard() {
       </div>
 
       {/* Graphique + réseaux */}
-      <div className="grid min-h-0 flex-1 gap-3 lg:min-h-[16.5rem] lg:grid-cols-3">
+      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-3 [@media(min-width:1280px)_and_(min-height:820px)]:min-h-[16.5rem]">
         <section className={`${card} lg:col-span-2`}>
           <div className="flex shrink-0 items-center justify-between gap-2">
             <div className="flex items-center gap-3">
@@ -161,7 +161,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="min-h-0 flex-1">
-            {tl.error ? <ErrorBox error={tl.error} onRetry={tl.reload} /> : tl.data ? <EngagementChart data={tl.data} className="h-60 lg:h-full" /> : <Spinner />}
+            {tl.error ? <ErrorBox error={tl.error} onRetry={tl.reload} /> : tl.data ? <EngagementChart data={tl.data} className="h-64 [@media(min-width:1280px)_and_(min-height:820px)]:h-full" /> : <Spinner />}
           </div>
         </section>
 
@@ -187,7 +187,7 @@ export default function Dashboard() {
       </div>
 
       {/* Publications et activités */}
-      <div className="grid shrink-0 gap-3 lg:h-40 lg:grid-cols-[2fr_3fr]">
+      <div className="grid shrink-0 gap-3 lg:grid-cols-[2fr_3fr] [@media(min-width:1280px)_and_(min-height:820px)]:h-40">
         <section className={card}>
           <h2 className="flex shrink-0 items-center gap-2 text-base font-semibold text-slate-900"><Trophy size={15} className="text-amber-500" /> Meilleures publications</h2>
           {d.top.length === 0 ? (
