@@ -35,7 +35,7 @@ const QUESTIONS = [
 ]
 
 const Section = ({ title, children, className = '' }: { title: ReactNode; children: ReactNode; className?: string }) => (
-  <section className={`rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${className}`}>
+  <section className={`rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ${className}`}>
     <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
     {children}
   </section>
@@ -109,7 +109,7 @@ export default function NetworkPage({ platform }: { platform: Platform }) {
     ? { t: 'Connecté', c: 'bg-emerald-50 text-emerald-700', d: 'bg-emerald-500' }
     : account?.status === 'expired'
       ? { t: 'Expiré', c: 'bg-amber-50 text-amber-700', d: 'bg-amber-500' }
-      : { t: net.configured ? 'Non connecté' : 'Non configuré', c: 'bg-slate-100 text-slate-600', d: 'bg-slate-400' }
+      : { t: net.configured ? 'Non connecté' : 'Non configuré', c: 'bg-red-50 text-red-600', d: 'bg-red-500' }
 
   const fit = connected && statsOK && tab === 'apercu'
   const TAB_ICON: Record<TabKey, ReactNode> = {
@@ -404,7 +404,7 @@ function ConnectionPanel({ net, onChanged }: { net: NetworkInfo; onChanged: () =
 
   return (
     <div className="space-y-4">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
         <div className="flex flex-wrap items-center gap-4">
           <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-slate-50 ring-1 ring-slate-200"><Logo platform={net.platform} size={32} /></span>
           <div className="min-w-0 flex-1">
@@ -420,11 +420,11 @@ function ConnectionPanel({ net, onChanged }: { net: NetworkInfo; onChanged: () =
             )}
           </div>
           {isAdmin ? <div className="flex flex-wrap gap-2">
-            <button onClick={connect} disabled={!net.configured || busy !== null} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
+            <button onClick={connect} disabled={!net.configured || busy !== null} className="inline-flex items-center gap-2 rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50">
               {busy === 'connect' ? <Loader2 size={15} className="animate-spin" /> : <Link2 size={15} />} {account ? 'Reconnecter' : 'Connecter mon compte'}
             </button>
             {account && (
-              <button onClick={disconnect} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50">
+              <button onClick={disconnect} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50">
                 {busy === 'disconnect' ? <Loader2 size={15} className="animate-spin" /> : <Unplug size={15} />} Déconnecter
               </button>
             )}
@@ -460,41 +460,72 @@ function PostsTable({ data, loading, error, reload, days }: { data: PostItem[] |
 
   if (loading && !data) return <Spinner />
   if (error) return <ErrorBox error={error} onRetry={reload} />
+
+  const all = data ?? []
+  const total = all.reduce((a, p) => a + p.interactions, 0)
+  const best = all.reduce<PostItem | null>((b, p) => (!b || p.interactions > b.interactions ? p : b), null)
+  const tile = 'flex min-w-0 items-center gap-3 rounded-2xl bg-white p-3.5 shadow-sm ring-1 ring-slate-100'
+  const icon = 'grid h-11 w-11 shrink-0 place-items-center rounded-xl text-white shadow-sm'
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Publications · {days} jours <span className="text-sm font-normal text-slate-400">({rows.length})</span></h2>
-        <div className="flex rounded-xl bg-slate-100 p-0.5 text-sm" role="group" aria-label="Tri">
-          {([['best', 'Meilleures'], ['worst', 'Moins bonnes'], ['recent', 'Récentes']] as const).map(([k, l]) => (
-            <button key={k} aria-pressed={sort === k} onClick={() => setSort(k)} className={`rounded-[0.6rem] px-3 py-1.5 font-medium ${sort === k ? 'bg-white shadow-sm' : 'text-slate-500'}`}>{l}</button>
-          ))}
-        </div>
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-3">
+        <section className={tile}>
+          <span className={`${icon} bg-blue-500`}><FileText size={20} /></span>
+          <div className="min-w-0"><p className="text-xs font-medium text-blue-600">Publications</p><p className="text-2xl leading-tight font-semibold tracking-tight text-slate-900">{fmtNum(all.length)}</p><p className="text-xs text-slate-500">sur {days} jours</p></div>
+        </section>
+        <section className={`${tile} bg-gradient-to-br from-pink-50 to-white`}>
+          <span className={`${icon} bg-pink-500`}><Heart size={20} fill="currentColor" /></span>
+          <div className="min-w-0"><p className="text-xs font-medium text-pink-600">Interactions</p><p className="text-2xl leading-tight font-semibold tracking-tight text-slate-900">{all.length ? fmtNum(total) : '—'}</p><p className="text-xs text-slate-500">sur {days} jours</p></div>
+        </section>
+        <section className={tile}>
+          <span className={`${icon} bg-amber-500`}><Trophy size={20} /></span>
+          <div className="min-w-0 flex-1"><p className="text-xs font-medium text-amber-600">Meilleure publication</p><p className="text-2xl leading-tight font-semibold tracking-tight text-slate-900">{best ? fmtNum(best.interactions) : '—'}</p><p className="truncate text-xs text-slate-500">{best ? best.caption || '(sans légende)' : 'Aucune publication'}</p></div>
+        </section>
       </div>
-      {rows.length === 0 ? <p className="mt-4 rounded-xl bg-slate-50 p-6 text-center text-sm text-slate-500">Aucune publication sur cette période.</p> : (
-        <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
-          <table className="w-full min-w-[40rem] text-left text-sm">
-            <thead className="bg-slate-50 text-xs text-slate-500">
-              <tr><th className="px-4 py-2.5 font-medium">Publication</th>{cols.map(([k, l]) => <th key={k} className="px-3 py-2.5 text-right font-medium">{l}</th>)}<th className="px-4 py-2.5 text-right font-medium">Interactions</th></tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rows.map((p) => (
-                <tr key={p.remote_id} className="hover:bg-slate-50/60">
-                  <td className="max-w-xs px-4 py-3">
-                    <p className="flex items-center gap-2 truncate font-medium text-slate-800">
-                      <span className="truncate">{p.caption || '(sans légende)'}</span>
-                      {p.permalink && <a href={p.permalink} target="_blank" rel="noreferrer" aria-label="Voir la publication" className="shrink-0 text-brand-700"><ExternalLink size={13} /></a>}
-                    </p>
-                    <p className="text-xs text-slate-400">{format(new Date(p.published_at), 'd MMM yyyy HH:mm', { locale: fr })}{p.media_type ? ` · ${POST_TYPE[p.media_type] ?? p.media_type}` : ''}</p>
-                  </td>
-                  {cols.map(([k]) => <td key={k} className="px-3 py-3 text-right tabular-nums text-slate-600">{typeof p.metrics[k] === 'number' ? fmtNum(p.metrics[k]) : '—'}</td>)}
-                  <td className="px-4 py-3 text-right font-semibold tabular-nums">{fmtNum(p.interactions)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+      <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="flex items-center gap-3 text-base font-semibold text-slate-900">
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-700 text-white"><FileText size={17} /></span>
+            Publications · {days} jours <span className="text-sm font-normal text-slate-400">({rows.length})</span>
+          </h2>
+          <div className="flex rounded-full bg-slate-100 p-0.5 text-xs" role="group" aria-label="Tri">
+            {([['best', 'Meilleures'], ['worst', 'Moins bonnes'], ['recent', 'Récentes']] as const).map(([k, l]) => (
+              <button key={k} aria-pressed={sort === k} onClick={() => setSort(k)} className={`rounded-full px-3.5 py-1.5 font-medium ${sort === k ? 'bg-brand-700 text-white shadow-sm' : 'text-slate-500'}`}>{l}</button>
+            ))}
+          </div>
         </div>
-      )}
-    </section>
+        {rows.length === 0 ? <p className="mt-4 rounded-xl bg-slate-50 p-6 text-center text-sm text-slate-500">Aucune publication sur cette période.</p> : (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[40rem] text-left text-sm">
+              <thead className="text-xs text-slate-500">
+                <tr className="border-b border-slate-100"><th className="py-2.5 pr-3 font-medium">Publication</th>{cols.map(([k, l]) => <th key={k} className="px-3 py-2.5 text-right font-medium">{l}</th>)}<th className="py-2.5 pl-3 text-right font-medium">Interactions</th></tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {rows.map((p) => (
+                  <tr key={p.remote_id} className="hover:bg-slate-50/60">
+                    <td className="max-w-xs py-3 pr-3">
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500" aria-hidden>{p.media_type && /VIDEO|REEL/i.test(p.media_type) ? <Video size={17} /> : <ImageIcon size={17} />}</span>
+                        <div className="min-w-0">
+                          <p className="flex items-center gap-2 truncate font-medium text-slate-800">
+                            <span className="truncate">{p.caption || '(sans légende)'}</span>
+                            {p.permalink && <a href={p.permalink} target="_blank" rel="noreferrer" aria-label="Voir la publication" className="shrink-0 text-brand-700"><ExternalLink size={13} /></a>}
+                          </p>
+                          <p className="text-xs text-slate-500">{format(new Date(p.published_at), 'd MMM yyyy HH:mm', { locale: fr })}{p.media_type ? ` · ${POST_TYPE[p.media_type] ?? p.media_type}` : ''}</p>
+                        </div>
+                      </div>
+                    </td>
+                    {cols.map(([k]) => <td key={k} className="px-3 py-3 text-right tabular-nums text-slate-600">{typeof p.metrics[k] === 'number' ? fmtNum(p.metrics[k]) : '—'}</td>)}
+                    <td className="py-3 pl-3 text-right"><span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-emerald-700"><Heart size={12} />{fmtNum(p.interactions)}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
   )
 }
 
@@ -519,7 +550,7 @@ function CommentsList({ all, posts, onChange }: { all: CommentRow[]; posts: Post
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {([['', 'Tous', all.length], ['pending', 'À traiter', count('pending')], ['replied', 'Répondus', count('replied')], ['done', 'Traités', count('done')]] as [CommentRow['status'] | '', string, number][]).map(([k, l, n]) => (
-          <button key={l} onClick={() => setStatus(k)} aria-pressed={status === k} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium ${status === k ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>{l} <span className={status === k ? 'text-white/80' : 'text-slate-400'}>{n}</span></button>
+          <button key={l} onClick={() => setStatus(k)} aria-pressed={status === k} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium ${status === k ? 'border-brand-700 bg-brand-700 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>{l} <span className={status === k ? 'text-white/80' : 'text-slate-400'}>{n}</span></button>
         ))}
         <label className="relative ml-auto min-w-52 flex-1 sm:max-w-xs">
           <span className="sr-only">Rechercher dans les commentaires</span>
@@ -535,7 +566,7 @@ function CommentsList({ all, posts, onChange }: { all: CommentRow[]; posts: Post
       ) : (
         <div className="space-y-5">
           {groups.map((g) => (
-            <section key={g.key} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60">
+            <section key={g.key} className="overflow-hidden rounded-2xl bg-slate-50/60 ring-1 ring-slate-100">
               <header className="border-b border-slate-200 bg-white px-4 py-3 md:px-5">
                 <p className="flex items-center gap-2 font-semibold text-slate-900">
                   <span className="truncate">{g.post?.caption || g.comments[0].media_caption || (g.key === 'none' ? 'Publication inconnue' : '(sans légende)')}</span>
@@ -578,9 +609,9 @@ function Advice({ platform, label, days }: { platform: Platform; label: string; 
 
   return (
     <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
         <div className="flex flex-wrap items-center justify-end gap-3">
-          <button onClick={analyze} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 disabled:opacity-60">
+          <button onClick={analyze} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-full bg-brand-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-600 disabled:opacity-60">
             {busy === 'analyze' ? <Loader2 size={16} className="animate-spin" /> : <TrendingUp size={16} />} Analyser {label}
           </button>
         </div>
@@ -595,7 +626,7 @@ function Advice({ platform, label, days }: { platform: Platform; label: string; 
             : <div className="flex flex-col items-center gap-2 py-6 text-center text-slate-300"><Sparkles size={28} /></div>}
         </div>
       </section>
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
         <h2 className="mb-1 flex items-center gap-2 text-base font-semibold"><Sparkles size={16} className="text-brand-600" /> Poser une question</h2>
         <div className="my-3 flex flex-wrap gap-1.5">
           {QUESTIONS.map((q) => <button key={q} disabled={busy !== null} onClick={() => { setQuestion(q); ask(q) }} className="rounded-full border border-slate-200 px-2.5 py-1 text-left text-xs text-slate-600 hover:border-brand-600 hover:text-brand-700 disabled:opacity-50">{q}</button>)}
