@@ -78,9 +78,15 @@ export const facebook: Provider = {
         fb_exchange_token: short.access_token,
       })}`,
     );
-    const { data: pages } = await httpJson<{ data: { id: string; name: string; access_token: string; picture?: { data?: { url?: string } } }[] }>(
-      `${GRAPH}/me/accounts?fields=id,name,access_token,picture.type(large){url}&limit=100&access_token=${long.access_token}`,
-    );
+    // Graph pagine /me/accounts et peut renvoyer moins de Pages que `limit`: on suit `paging.next` jusqu'au bout.
+    type Pg = { id: string; name: string; access_token: string; picture?: { data?: { url?: string } } };
+    const pages: { data: Pg[] } = { data: [] };
+    let next: string | undefined = `${GRAPH}/me/accounts?fields=id,name,access_token,picture.type(large){url}&limit=25&access_token=${long.access_token}`;
+    for (let i = 0; next && i < 20; i++) {
+      const r: { data: { data: Pg[]; paging?: { next?: string } } } = await httpJson(next);
+      pages.data.push(...r.data.data);
+      next = r.data.paging?.next;
+    }
     if (!pages.data.length)
       throw new ApiError('Aucune Page Facebook trouvée. Vous devez administrer une Page, et l’avoir cochée lors de l’autorisation.', 422);
     return pages.data.map((p) => ({ id: p.id, name: p.name, avatarUrl: p.picture?.data?.url, accessToken: p.access_token, scopes: SCOPES }));

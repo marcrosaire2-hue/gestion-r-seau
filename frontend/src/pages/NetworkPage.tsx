@@ -495,6 +495,17 @@ function AccountPicker({ id, platform, onDone }: { id: string; platform: Platfor
     onDone(false)
   }
 
+  // Relance l'autorisation Facebook: la fenêtre permet de cocher d'autres Pages.
+  async function reauthorize() {
+    try {
+      await api(`/connections/pending/${id}`, { method: 'DELETE' })
+      const { url } = await api<{ url: string }>(`/connections/${platform}/start`, { method: 'POST' })
+      window.location.href = url
+    } catch (e) {
+      toast('error', (e as Error).message)
+    }
+  }
+
   if (loading && !data) return <Spinner />
   if (error || !data) return <div className="mb-5"><ErrorBox error={error ?? 'Sélection indisponible'} /><button onClick={() => onDone(false)} className="mt-2 text-sm text-slate-500 hover:text-slate-800">Fermer</button></div>
 
@@ -518,6 +529,12 @@ function AccountPicker({ id, platform, onDone }: { id: string; platform: Platfor
           </li>
         ))}
       </ul>
+      {platform === 'facebook' && (
+        <p className="mt-4 text-sm text-slate-500">
+          Une Page manque ? Boussole ne voit que les Pages autorisées dans la fenêtre Facebook.{' '}
+          <button onClick={reauthorize} disabled={busy !== null} className="font-medium text-brand-700 hover:underline">Autoriser d’autres Pages</button>
+        </p>
+      )}
       <button onClick={cancel} disabled={busy !== null} className="mt-4 text-sm text-slate-500 hover:text-slate-800">Annuler</button>
     </section>
   )
