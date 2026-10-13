@@ -79,10 +79,10 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-white md:flex">
       {/* Barre latérale (ordinateur) */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col px-4 py-5 md:flex">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-slate-100 bg-[#fafbfb] px-4 py-5 md:flex">
         <div className="mb-5 flex items-center gap-2.5 px-1">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[#0b7a43] to-[#16a05a] text-white shadow-sm"><Share2 size={20} /></span>
-          <span className="text-xl font-semibold tracking-tight text-slate-900">Boussole</span>
+          <span className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-[#0b7a43] to-[#16a05a] text-white shadow-sm"><Share2 size={22} /></span>
+          <span className="text-2xl font-bold tracking-tight text-slate-900">Boussole</span>
         </div>
 
         <div className="relative mb-5">
@@ -119,13 +119,13 @@ export default function Layout() {
                         onClick={() => setQ('')}
                         className={({ isActive }) =>
                           `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                            isActive ? 'bg-gradient-to-b from-neutral-900 to-neutral-700 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+                            isActive ? 'bg-brand-700 text-white shadow-md' : 'text-slate-700 hover:bg-slate-100'
                           }`
                         }
                       >
-                        {i.platform ? <span className="grid h-[18px] w-[18px] place-items-center rounded bg-white/90"><Logo platform={i.platform} size={15} /></span> : <NavIcon i={i} size={18} />}
+                        {i.platform ? <Logo platform={i.platform} size={22} /> : <NavIcon i={i} size={20} />}
                         <span className="flex-1">{i.label}</span>
-                        {n > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800" title="Commentaires à traiter">{n}</span>}
+                        {i.platform && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${n === 0 ? 'bg-slate-100 text-slate-500' : i.platform === 'facebook' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-600'}`} title="Commentaires à traiter">{n}</span>}
                       </NavLink>
                     )
                   })}
@@ -149,7 +149,7 @@ export default function Layout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Barre du haut */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 bg-white px-4 md:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-slate-100 bg-white px-4 md:px-6">
           <div className="flex items-center gap-2 md:hidden">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-[#0b7a43] to-[#16a05a] text-white"><Share2 size={16} /></span>
           </div>
@@ -157,7 +157,7 @@ export default function Layout() {
           <button onClick={() => nav(1)} aria-label="Page suivante" className="hidden h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 md:grid"><ArrowRight size={16} /></button>
           <p className="ml-1 truncate text-sm text-slate-500">
             <span className="hidden sm:inline">Boussole <span className="mx-1 text-slate-300">›</span></span>
-            <span className="font-medium text-slate-800">{title || 'Page'}</span>
+            <span className="font-semibold text-slate-900">{title || 'Page'}</span>
           </p>
 
           <div className="ml-auto flex items-center gap-2">
@@ -187,7 +187,7 @@ export default function Layout() {
         </header>
 
         {/* Zone de contenu grise, angle supérieur gauche arrondi */}
-        <main className="min-w-0 flex-1 bg-[#f5f6f7] px-4 pt-6 pb-24 md:rounded-tl-[1.75rem] md:px-8 md:pb-10">
+        <main className="min-w-0 flex-1 bg-[#f7f9f8] px-4 pt-6 pb-24 md:px-8 md:pb-10">
           <div className="mx-auto max-w-6xl"><Outlet /></div>
         </main>
       </div>

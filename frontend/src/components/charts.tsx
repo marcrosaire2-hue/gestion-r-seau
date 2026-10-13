@@ -94,7 +94,7 @@ export function EngagementChart({ data, className = 'h-64' }: { data: Timeline; 
                 >
                   <span
                     style={{ height: `${Math.max(h, b.posts ? 3 : 1)}%` }}
-                    className={`relative block w-full rounded-t-lg transition-colors ${active ? 'bg-gradient-to-b from-[#0b7a43] to-[#cfe6d8]' : 'bg-gradient-to-b from-[#cfe3d8] to-[#eef5f1]'}`}
+                    className={`relative block w-full rounded-t-lg transition-colors ${active ? 'bg-gradient-to-b from-[#0b7a43] to-[#8fd0ae]' : 'bg-gradient-to-b from-[#3fb57b] to-[#d6efe2]'}`}
                   >
                     {active && <span aria-hidden className="absolute bottom-0 left-1/2 h-full w-px bg-white/70" />}
                   </span>
