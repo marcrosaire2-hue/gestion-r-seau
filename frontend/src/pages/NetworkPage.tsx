@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { AlertTriangle, ChevronDown, ExternalLink, Link2, Loader2, MessageSquare, RefreshCw, Search, Send, Sparkles, Trophy, TrendingUp, Unplug } from 'lucide-react'
 import { api, type CommentRow, type NetworkInfo, type Platform } from '../lib/api'
+import { getRole } from '../lib/session'
 import { Logo, PLATFORM_META } from '../lib/platforms'
 import { Delta, EngagementChart, FollowersChart, pctChange, type Timeline } from '../components/charts'
 import { CommentCard } from '../components/CommentCard'
@@ -266,6 +267,7 @@ function ConnectionPanel({ net, onChanged }: { net: NetworkInfo; onChanged: () =
   const meta = PLATFORM_META[net.platform]
   const account = net.accounts[0]
   const active = account?.status === 'active'
+  const isAdmin = getRole() === 'admin' // connecter / déconnecter concerne toute l'équipe: réservé aux administrateurs
 
   async function connect() {
     setBusy('connect')
@@ -309,7 +311,7 @@ function ConnectionPanel({ net, onChanged }: { net: NetworkInfo; onChanged: () =
               </p>
             )}
           </div>
-          <div className="flex flex-wrap gap-2">
+          {isAdmin ? <div className="flex flex-wrap gap-2">
             <button onClick={connect} disabled={!net.configured || busy !== null} className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">
               {busy === 'connect' ? <Loader2 size={15} className="animate-spin" /> : <Link2 size={15} />} {account ? 'Reconnecter' : 'Connecter mon compte'}
             </button>
@@ -318,7 +320,7 @@ function ConnectionPanel({ net, onChanged }: { net: NetworkInfo; onChanged: () =
                 {busy === 'disconnect' ? <Loader2 size={15} className="animate-spin" /> : <Unplug size={15} />} Déconnecter
               </button>
             )}
-          </div>
+          </div> : !active && <p className="text-sm text-slate-500">Un administrateur doit connecter ce compte.</p>}
         </div>
 
         {!net.configured && (
@@ -474,6 +476,8 @@ function AccountPicker({ id, platform, onDone }: { id: string; platform: Platfor
   const toast = useToast()
   const { data, error, loading } = useFetch(() =>
     api<{ platform: Platform; options: { id: string; name: string; avatar_url: string | null }[] }>(`/connections/pending/${id}`),
+    [],
+    0,
   )
   const [busy, setBusy] = useState<string | null>(null)
   const noun = platform === 'facebook' ? 'Page' : 'compte'

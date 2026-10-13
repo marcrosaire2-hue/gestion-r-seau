@@ -33,7 +33,7 @@ auth.get(
   '/me',
   requireAuth,
   wrap(async (req, res) => {
-    const u = await C.users.findOne({ id: req.userId }, { projection: { _id: 0, username: 1, role: 1 } });
+    const u = await C.users.findOne({ id: req.actorId }, { projection: { _id: 0, username: 1, role: 1 } });
     res.json({ username: u?.username, role: u?.role ?? 'admin' });
   }),
 );

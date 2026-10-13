@@ -120,7 +120,8 @@ export function ErrorBox({ error, onRetry }: { error: string; onRetry?: () => vo
 }
 
 /* ---------- Chargement de données ---------- */
-export function useFetch<T>(loader: () => Promise<T>, deps: unknown[] = []) {
+/** `refreshMs`: rafraîchissement silencieux en arrière-plan (sans écran de chargement); 0 pour le désactiver. */
+export function useFetch<T>(loader: () => Promise<T>, deps: unknown[] = [], refreshMs = 20_000) {
   const [data, setData] = useState<T | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -135,6 +136,19 @@ export function useFetch<T>(loader: () => Promise<T>, deps: unknown[] = []) {
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, tick])
+  // Mise à jour automatique: les nouveaux chiffres apparaissent sans recharger la page.
+  useEffect(() => {
+    if (!refreshMs) return
+    let alive = true
+    const refresh = () => {
+      if (document.hidden) return
+      loader().then((d) => { if (alive) { setData(d); setError(null) } }).catch(() => { /* on garde les données affichées */ })
+    }
+    const id = setInterval(refresh, refreshMs)
+    document.addEventListener('visibilitychange', refresh)
+    return () => { alive = false; clearInterval(id); document.removeEventListener('visibilitychange', refresh) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...deps, refreshMs])
   return { data, error, loading, reload: () => setTick((t) => t + 1) }
 }
 

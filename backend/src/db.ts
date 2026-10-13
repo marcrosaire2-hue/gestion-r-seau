@@ -24,6 +24,9 @@ export const C = {
   oauthPending: col('oauth_pending'),
 };
 
+/** Identifiant de l'espace commun auquel appartiennent les comptes connectés et leurs données (visibles par tous les utilisateurs). */
+export const WORKSPACE_ID = 'workspace';
+
 export const newId = () => randomUUID();
 /** Projection standard: n'expose jamais le `_id` interne. */
 export const NO_ID = { projection: { _id: 0 } } as const;
@@ -61,7 +64,28 @@ export async function initDb() {
   ]);
   // Comptes antérieurs aux rôles (créés par le propriétaire en ligne de commande): administrateurs.
   await C.users.updateMany({ role: { $exists: false } }, { $set: { role: 'admin' } });
+  await migrateToWorkspace();
   console.log('MongoDB connecté.');
+}
+
+/**
+ * Espace commun: les comptes réseaux et toutes leurs données appartiennent à l'équipe, pas à un utilisateur.
+ * Les données créées avant ce changement (rattachées à un utilisateur) sont rattachées à l'espace commun.
+ */
+async function migrateToWorkspace() {
+  const old = { user_id: { $ne: WORKSPACE_ID } };
+  for (const c of await C.connections.find(old).toArray()) {
+    try {
+      await C.connections.updateOne({ _id: c._id }, { $set: { user_id: WORKSPACE_ID } });
+    } catch (e) {
+      if ((e as { code?: number }).code !== 11000) throw e;
+      // Le même compte est déjà dans l'espace commun: on retire le doublon et ses données.
+      await C.connections.deleteOne({ _id: c._id });
+      await Promise.all([C.comments, C.metrics, C.snapshots].map((x) => x.deleteMany({ connection_id: c.id })));
+    }
+  }
+  await Promise.all([C.posts, C.targets, C.comments, C.metrics, C.snapshots, C.activity].map((x) => x.updateMany(old, { $set: { user_id: WORKSPACE_ID } })));
+  await C.aiCache.deleteMany(old);
 }
 
 export async function logActivity(

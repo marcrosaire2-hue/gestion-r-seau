@@ -5,7 +5,7 @@ import { C, logActivity, newId } from '../db';
 import { ApiError } from '../http';
 import { disconnect } from '../services/connections';
 
-/** Gestion des utilisateurs: réservée aux administrateurs. Chaque utilisateur ne voit que ses propres données. */
+/** Gestion des utilisateurs: réservée aux administrateurs. Les comptes réseaux connectés sont communs à tous les utilisateurs. */
 export const users = Router();
 users.use(requireAuth, requireAdmin);
 
@@ -31,7 +31,7 @@ users.post(
       if ((e as { code?: number }).code === 11000) throw new ApiError('Cet identifiant existe déjà.', 409);
       throw e;
     }
-    await logActivity(req.userId, 'user.created', null, { username: doc.username, role: doc.role });
+    await logActivity(req.actorId, 'user.created', null, { username: doc.username, role: doc.role });
     res.status(201).json({ id: doc.id, username: doc.username, role: doc.role, created_at: doc.created_at });
   }),
 );
@@ -43,7 +43,7 @@ users.patch(
     const b = z.object({ password }).parse(req.body);
     const r = await C.users.updateOne({ id: String(req.params.id) }, { $set: { password_hash: await hashPassword(b.password) } });
     if (!r.matchedCount) throw new ApiError('Utilisateur introuvable.', 404);
-    await logActivity(req.userId, 'user.password_reset', null, { user_id: String(req.params.id) });
+    await logActivity(req.actorId, 'user.password_reset', null, { user_id: String(req.params.id) });
     res.json({ ok: true });
   }),
 );
@@ -53,7 +53,7 @@ users.delete(
   '/:id',
   wrap(async (req, res) => {
     const id = String(req.params.id);
-    if (id === req.userId) throw new ApiError('Vous ne pouvez pas supprimer votre propre compte.', 400);
+    if (id === req.actorId) throw new ApiError('Vous ne pouvez pas supprimer votre propre compte.', 400);
     const target = await C.users.findOne({ id }, { projection: { _id: 0, username: 1 } });
     if (!target) throw new ApiError('Utilisateur introuvable.', 404);
 
@@ -72,7 +72,7 @@ users.delete(
       C.activity.deleteMany({ user_id: id }),
     ]);
     await C.users.deleteOne({ id });
-    await logActivity(req.userId, 'user.deleted', null, { username: target.username });
+    await logActivity(req.actorId, 'user.deleted', null, { username: target.username });
     res.status(204).end();
   }),
 );

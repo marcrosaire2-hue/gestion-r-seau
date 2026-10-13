@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { Router } from 'express';
-import { requireAuth, wrap } from '../auth';
+import { requireAdmin, requireAuth, wrap } from '../auth';
 import { encrypt } from '../crypto';
 import { C, logActivity, newId } from '../db';
 import { env } from '../env';
@@ -91,6 +91,7 @@ connections.get(
 
 connections.post(
   '/:platform/start',
+  requireAdmin,
   wrap(async (req, res) => {
     const platform = String(req.params.platform);
     if (!isPlatform(platform)) throw new ApiError('Plateforme inconnue.', 404);
@@ -111,6 +112,7 @@ connections.post(
 
 connections.delete(
   '/:id',
+  requireAdmin,
   wrap(async (req, res) => {
     res.json(await disconnect(req.userId, String(req.params.id)));
   }),
@@ -128,6 +130,7 @@ async function ownPending(userId: string, id: string) {
 // Liste des comptes proposés (jamais les jetons)
 connections.get(
   '/pending/:id',
+  requireAdmin,
   wrap(async (req, res) => {
     const p = await ownPending(req.userId, String(req.params.id));
     res.json({ platform: p.platform, options: p.options.map((o: any) => ({ id: o.id, name: o.name, avatar_url: o.avatar_url })) });
@@ -136,6 +139,7 @@ connections.get(
 
 connections.post(
   '/pending/:id/select',
+  requireAdmin,
   wrap(async (req, res) => {
     const p = await ownPending(req.userId, String(req.params.id));
     const accountId = String((req.body ?? {}).account_id ?? '');
@@ -157,6 +161,7 @@ connections.post(
 
 connections.delete(
   '/pending/:id',
+  requireAdmin,
   wrap(async (req, res) => {
     await C.oauthPending.deleteOne({ id: String(req.params.id), user_id: req.userId });
     res.status(204).end();

@@ -38,6 +38,11 @@ async function recoverStuck() {
 export function startScheduler() {
   recoverStuck().catch((e) => console.error('recoverStuck:', e.message));
   setInterval(tick, 30_000);
-  setInterval(() => syncAll().catch((e) => console.error('syncAll:', e.message)), 15 * 60_000);
-  console.log('Planificateur démarré (publications: 30 s, synchronisation: 15 min).');
+  let syncing = false; // pas de chevauchement si une synchronisation dure plus de 3 min
+  setInterval(() => {
+    if (syncing) return;
+    syncing = true;
+    syncAll().catch((e) => console.error('syncAll:', e.message)).finally(() => { syncing = false; });
+  }, 3 * 60_000);
+  console.log('Planificateur démarré (publications: 30 s, synchronisation: 3 min).');
 }
